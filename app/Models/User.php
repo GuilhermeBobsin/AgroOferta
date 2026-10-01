@@ -46,4 +46,27 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+        public function listings()
+    {
+        return $this->hasMany(Listing::class);
+    }
+
+    public function reviewsReceived()
+    {
+        return $this->hasMany(Review::class, 'reviewed_id');
+    }
+
+    public function whatsappUrl(string $text = ''): ?string
+    {
+        $digits = preg_replace('/\D/', '', $this->phone ?? '');
+        if (strlen($digits) < 10) {
+            return null;
+        }
+        if (strlen($digits) <= 11) {
+            $digits = '55'.$digits; // adiciona o código do Brasil
+        }
+
+        return 'https://wa.me/'.$digits.($text ? '?text='.rawurlencode($text) : '');
+    }
 }
