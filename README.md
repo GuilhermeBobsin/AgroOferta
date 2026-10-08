@@ -26,7 +26,7 @@ Na pasta do projeto, execute:
 
 ```powershell
 composer install
-Copy-Item .env.example .env
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 if (-not (Test-Path database/database.sqlite)) {
     New-Item -ItemType File database/database.sqlite | Out-Null
 }
