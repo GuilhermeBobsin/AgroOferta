@@ -30,7 +30,7 @@ class ListingController extends Controller
             ->when(is_numeric($request->price_min), fn ($q) => $q->where('price', '>=', $request->price_min))
             ->when(is_numeric($request->price_max), fn ($q) => $q->where('price', '<=', $request->price_max));
 
-        $canSortByDistance = $user && $user->latitude && $user->longitude;
+        $canSortByDistance = $user && $user->latitude !== null && $user->longitude !== null;
 
         match (true) {
             $sort === 'price_asc' => $query->orderBy('price'),
@@ -143,7 +143,7 @@ class ListingController extends Controller
      */
     private function coordinatesFor(User $user, string $city, string $state): array
     {
-        $sameCity = $user->latitude && $user->longitude
+        $sameCity = $user->latitude !== null && $user->longitude !== null
             && mb_strtolower(trim((string) $user->city)) === mb_strtolower(trim($city))
             && strtoupper((string) $user->state) === strtoupper($state);
 
