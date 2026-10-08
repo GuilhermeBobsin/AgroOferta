@@ -1,59 +1,69 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# AgroOferta
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+O AgroOferta é um marketplace de insumos agropecuários. Agricultores podem anunciar excedentes que têm disponíveis, e outros produtores podem encontrar itens de que precisam e negociar diretamente com o vendedor.
 
-## About Laravel
+## Funcionalidades atuais
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- Cadastro, login e gerenciamento de conta.
+- Publicação de anúncios com categoria, descrição, preço, unidade, quantidade, foto e localização.
+- Busca por texto e filtros por categoria, unidade, estado e faixa de preço.
+- Ordenação por data, preço e proximidade, quando o usuário tem coordenadas salvas.
+- Captura opcional da posição do produto no anúncio; a página mostra apenas distância aproximada.
+- Negociações privadas com mensagens e opção de continuar a conversa pelo WhatsApp.
+- Gerenciamento do estado do anúncio: ativo, pausado ou vendido.
+- Avaliações disponíveis para as partes quando o vendedor registra a venda para um comprador que iniciou uma negociação no AgroOferta.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+O sistema facilita a descoberta e a negociação entre produtores. Pagamentos e entrega dos produtos são combinados diretamente entre comprador e vendedor.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Requisitos
 
-## Learning Laravel
+- PHP 8.2 ou superior, com as extensões exigidas pelo Laravel 12.
+- Composer.
+- Node.js e npm.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+## Instalação local (Windows PowerShell)
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+Na pasta do projeto, execute:
 
-## Laravel Sponsors
+```powershell
+composer install
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+if (-not (Test-Path database/database.sqlite)) {
+    New-Item -ItemType File database/database.sqlite | Out-Null
+}
+php artisan key:generate
+php artisan migrate --seed
+php artisan storage:link
+npm install
+npm run build
+```
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+O arquivo `.env.example` configura SQLite por padrão. O comando `php artisan migrate --seed` cria as tabelas e carrega as categorias iniciais (Sementes, Fertilizantes, Defensivos, Rações, Maquinário, Ferramentas, Animais e Outros). O seeder pode ser executado novamente sem duplicar essas categorias.
 
-### Premium Partners
+Para usar outro banco de dados, configure as variáveis `DB_*` no `.env` antes de executar as migrações. Nunca compartilhe o `.env` ou a chave da aplicação.
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+## Executar em desenvolvimento
 
-## Contributing
+```powershell
+composer run dev
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+Esse comando inicia o servidor Laravel, o Vite e os processos de fila e logs configurados pelo projeto. Acesse o endereço local mostrado pelo servidor (normalmente `http://127.0.0.1:8000`).
 
-## Code of Conduct
+## Fluxo principal
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+1. Crie uma conta e, se quiser ordenar anúncios por proximidade ou receber contatos por WhatsApp, informe sua localização e telefone em **Meu contato**.
+2. Publique um anúncio em **Anunciar**. Se o produto estiver em outra localização, use a opção de marcar a posição do produto; só a distância aproximada será mostrada aos demais usuários.
+3. Encontre anúncios na página inicial usando busca, filtros e ordenação.
+4. Abra um anúncio e inicie uma negociação para trocar mensagens com o vendedor.
+5. Depois de concluir a venda, o vendedor pode marcar o anúncio como vendido e selecionar o comprador da negociação para habilitar as avaliações.
 
-## Security Vulnerabilities
+## Testes
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+Para executar a suíte automatizada:
 
-## License
+```powershell
+php artisan test
+```
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Os testes usam SQLite. A ordenação por distância depende de funções SQL que não estão disponíveis no SQLite e precisa ser validada em MySQL, MariaDB ou PostgreSQL.
