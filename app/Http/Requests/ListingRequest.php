@@ -18,7 +18,10 @@ class ListingRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $this->merge([
-            'state' => strtoupper((string) $this->state),
+            'title' => trim((string) $this->input('title')),
+            'description' => $this->filled('description') ? trim((string) $this->input('description')) : null,
+            'city' => trim((string) $this->input('city')),
+            'state' => strtoupper(trim((string) $this->input('state'))),
             'negotiable' => $this->boolean('negotiable'),
         ]);
     }
@@ -29,13 +32,22 @@ class ListingRequest extends FormRequest
             'category_id' => ['required', 'exists:categories,id'],
             'title' => ['required', 'string', 'max:120'],
             'description' => ['nullable', 'string', 'max:3000'],
-            'price' => ['required', 'numeric', 'min:0'],
+            'price' => ['required', 'numeric', 'between:0,9999999999.99'],
             'unit' => ['required', 'in:'.implode(',', Listing::UNITS)],
-            'quantity' => ['nullable', 'numeric', 'min:0'],
+            'quantity' => ['nullable', 'numeric', 'between:0,9999999999.99'],
             'negotiable' => ['boolean'],
             'city' => ['required', 'string', 'max:100'],
-            'state' => ['required', 'string', 'size:2'],
+            'state' => ['required', 'regex:/^[A-Z]{2}$/'],
             'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'state.regex' => 'Informe uma sigla de estado válida com duas letras.',
+            'price.between' => 'O preço precisa estar entre R$ 0,00 e R$ 9.999.999.999,99.',
+            'quantity.between' => 'A quantidade informada é muito alta.',
         ];
     }
 }
