@@ -12,6 +12,7 @@ return [
     'confirmed' => 'A confirmação do campo :attribute não confere.',
     'current_password' => 'A senha atual está incorreta.',
     'email' => 'Informe um endereço de e-mail válido.',
+    'enum' => 'O valor selecionado para :attribute é inválido.',
     'exists' => 'O valor selecionado para :attribute é inválido.',
     'image' => 'O arquivo :attribute precisa ser uma imagem.',
     'in' => 'O valor selecionado para :attribute é inválido.',
@@ -33,6 +34,7 @@ return [
     'numeric' => 'O campo :attribute precisa ser um número.',
     'regex' => 'O formato do campo :attribute é inválido.',
     'required' => 'O campo :attribute é obrigatório.',
+    'required_if' => 'O campo :attribute é obrigatório quando :other é :value.',
     'required_with' => 'O campo :attribute é obrigatório quando :values é informado.',
     'size' => [
         'array' => 'O campo :attribute precisa conter :size itens.',
@@ -48,6 +50,7 @@ return [
         'name' => 'nome',
         'email' => 'e-mail',
         'password' => 'senha',
+        'token' => 'link de redefinição',
         'password_confirmation' => 'confirmação da senha',
         'phone' => 'telefone',
         'city' => 'cidade',
