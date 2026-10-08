@@ -73,8 +73,11 @@ class ListingController extends Controller
     public function store(ListingRequest $request)
     {
         $user = $request->user();
-        $data = $request->safe()->except('image');
-        [$data['latitude'], $data['longitude']] = $this->coordinatesFor($user, $data['city'], $data['state']);
+        $data = $request->safe()->except(['image', 'latitude', 'longitude']);
+        $coordinates = $request->safe()->only(['latitude', 'longitude']);
+        [$data['latitude'], $data['longitude']] = isset($coordinates['latitude'], $coordinates['longitude'])
+            ? [$coordinates['latitude'], $coordinates['longitude']]
+            : $this->coordinatesFor($user, $data['city'], $data['state']);
 
         if ($request->hasFile('image')) {
             $data['image_path'] = $request->file('image')->store('listings', 'public');
@@ -97,11 +100,14 @@ class ListingController extends Controller
 
     public function update(ListingRequest $request, Listing $listing)
     {
-        $data = $request->safe()->except('image');
+        $data = $request->safe()->except(['image', 'latitude', 'longitude']);
+        $coordinates = $request->safe()->only(['latitude', 'longitude']);
 
         // Mudou o local: as coordenadas antigas deixam de valer
-        $moved = mb_strtolower($data['city']) !== mb_strtolower($listing->city) || $data['state'] !== $listing->state;
-        if ($moved) {
+        $moved = mb_strtolower(trim($data['city'])) !== mb_strtolower(trim($listing->city)) || $data['state'] !== $listing->state;
+        if (isset($coordinates['latitude'], $coordinates['longitude'])) {
+            [$data['latitude'], $data['longitude']] = [$coordinates['latitude'], $coordinates['longitude']];
+        } elseif ($moved) {
             [$data['latitude'], $data['longitude']] = $this->coordinatesFor($request->user(), $data['city'], $data['state']);
         }
 
