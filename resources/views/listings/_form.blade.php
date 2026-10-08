@@ -64,6 +64,23 @@
             <input id="state" name="state" value="{{ old('state', $l?->state ?? auth()->user()->state) }}" maxlength="2" pattern="[A-Za-z]{2}" placeholder="RS" autocomplete="address-level1" required class="w-full rounded-lg border-gray-300 uppercase focus:border-green-700 focus:ring-green-700">
         </div>
     </div>
+    <input type="hidden" name="latitude" id="listing-latitude" value="{{ old('latitude') }}">
+    <input type="hidden" name="longitude" id="listing-longitude" value="{{ old('longitude') }}">
+    <div class="mt-3 rounded-xl bg-green-50 p-4">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p id="listing-geo-message" aria-live="polite" class="text-sm text-gray-700">
+                @if (old('latitude') !== null && old('longitude') !== null)
+                    Localização do produto selecionada. Salve o anúncio para aplicar.
+                @elseif ($l?->latitude !== null && $l?->longitude !== null)
+                    Este anúncio já tem coordenadas; elas serão mantidas se você não alterar o local.
+                @else
+                    Se o produto estiver em outra cidade que não a do seu perfil, marque a localização dele para habilitar a busca por proximidade.
+                @endif
+            </p>
+            <button type="button" id="listing-geolocate" class="shrink-0 rounded-lg border border-green-800 px-4 py-2 text-sm font-semibold text-green-900 transition hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-700">Marcar posição do produto</button>
+        </div>
+        <p class="mt-2 text-xs leading-5 text-gray-600">Use esta opção quando estiver no local do produto. Os outros usuários veem somente uma distância aproximada, não as coordenadas exatas.</p>
+    </div>
 </div>
 
 <div>
@@ -82,3 +99,28 @@
     <input type="checkbox" name="negotiable" value="1" @checked(old('negotiable', $l?->negotiable ?? true)) class="mt-0.5 rounded border-gray-300 text-green-800 focus:ring-green-700">
     <span><strong class="block text-gray-900">Aceito negociar o preço</strong><span class="text-xs text-gray-500">Compradores poderão entrar em contato com uma proposta.</span></span>
 </label>
+
+<script>
+    document.getElementById('listing-geolocate')?.addEventListener('click', () => {
+        const message = document.getElementById('listing-geo-message');
+        if (!navigator.geolocation) {
+            message.textContent = 'Seu navegador não oferece acesso à localização.';
+            return;
+        }
+
+        message.textContent = 'Obtendo a localização do produto...';
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                document.getElementById('listing-latitude').value = position.coords.latitude.toFixed(7);
+                document.getElementById('listing-longitude').value = position.coords.longitude.toFixed(7);
+                message.textContent = 'Localização obtida. Revise cidade e estado e salve o anúncio.';
+            },
+            (error) => {
+                message.textContent = error.code === 1
+                    ? 'A permissão de localização foi negada. Você pode continuar sem coordenadas.'
+                    : 'Não foi possível obter a localização. Tente novamente ou continue sem coordenadas.';
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+        );
+    });
+</script>
