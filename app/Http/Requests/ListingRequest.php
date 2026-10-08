@@ -38,6 +38,8 @@ class ListingRequest extends FormRequest
             'negotiable' => ['boolean'],
             'city' => ['required', 'string', 'max:100'],
             'state' => ['required', 'regex:/^[A-Z]{2}$/'],
+            'latitude' => ['nullable', 'required_with:longitude', 'numeric', 'between:-90,90'],
+            'longitude' => ['nullable', 'required_with:latitude', 'numeric', 'between:-180,180'],
             'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
         ];
     }
@@ -48,6 +50,8 @@ class ListingRequest extends FormRequest
             'state.regex' => 'Informe uma sigla de estado válida com duas letras.',
             'price.between' => 'O preço precisa estar entre R$ 0,00 e R$ 9.999.999.999,99.',
             'quantity.between' => 'A quantidade informada é muito alta.',
+            'latitude.required_with' => 'Latitude e longitude precisam ser informadas juntas.',
+            'longitude.required_with' => 'Latitude e longitude precisam ser informadas juntas.',
         ];
     }
 }
