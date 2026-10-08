@@ -123,7 +123,9 @@ class ListingController extends Controller
 
         $listing->update([
             'status' => $status,
-            'sold_to_id' => $status === ListingStatus::Sold ? $request->validated('buyer_id') : null,
+            'sold_to_id' => $status === ListingStatus::Sold && $request->validated('buyer_id') !== 'outside'
+                ? $request->validated('buyer_id')
+                : null,
         ]);
 
         return back()->with('status', 'Status atualizado.');
