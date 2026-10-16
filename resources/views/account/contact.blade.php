@@ -1,3 +1,9 @@
+<x-app-layout>
+    <x-slot name="header">
+        <h2 class="font-semibold text-xl text-gray-800">
+            Meu contato e localização
+        </h2>
+    </x-slot>
 <div class="max-w-3xl mx-auto space-y-6">
     <div>
         <h2 class="text-2xl font-bold text-gray-900">Meu contato</h2>
@@ -142,3 +148,4 @@
         });
     })();
 </script>
+</x-app-layout>

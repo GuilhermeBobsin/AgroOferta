@@ -94,43 +94,6 @@
     @endif
 </div>
 
-<div>
-    <h3 class="mb-2 text-sm font-semibold text-gray-800">Onde está o produto?</h3>
-    <x-brazil-location-fields :city="$l?->city ?? auth()->user()->city" :state="$l?->state ?? auth()->user()->state" :required="true" prefix="listing-location" />
-    <input type="hidden" name="latitude" id="listing-latitude" value="{{ old('latitude') }}">
-    <input type="hidden" name="longitude" id="listing-longitude" value="{{ old('longitude') }}">
-    <div class="mt-3 rounded-xl bg-green-50 p-4">
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p id="listing-geo-message" aria-live="polite" class="text-sm text-gray-700">
-                @if (old('latitude') !== null && old('longitude') !== null)
-                    Localização do produto selecionada. Salve o anúncio para aplicar.
-                @elseif ($l?->latitude !== null && $l?->longitude !== null)
-                    Este anúncio já tem coordenadas; elas serão mantidas se você não alterar o local.
-                @else
-                    Se o produto estiver em outra cidade que não a do seu perfil, marque a localização dele para habilitar a busca por proximidade.
-                @endif
-            </p>
-            <button type="button" id="listing-geolocate" class="shrink-0 rounded-lg border border-green-800 px-4 py-2 text-sm font-semibold text-green-900 transition hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-700">Marcar posição do produto</button>
-        </div>
-        <p class="mt-2 text-xs leading-5 text-gray-600">Sem marcar uma posição, usaremos o centro aproximado da cidade selecionada. Use esta opção quando estiver no local do produto para uma distância mais precisa. Os outros usuários veem somente uma distância aproximada, não as coordenadas exatas.</p>
-    </div>
-</div>
-
-<div>
-    <label for="image" class="mb-1 block text-sm font-semibold text-gray-800">Foto do insumo</label>
-    <input id="image" type="file" name="image" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" class="block w-full text-sm text-gray-600 file:me-3 file:rounded-lg file:border-0 file:bg-green-50 file:px-4 file:py-2 file:font-semibold file:text-green-900 hover:file:bg-green-100">
-    <p class="mt-1 text-xs text-gray-500">JPG, PNG ou WebP; até 4 MB. Uma foto nítida ajuda quem está procurando.</p>
-    <div id="image-preview" class="mt-3 hidden items-center gap-3 rounded-lg bg-green-50 p-3" aria-live="polite">
-        <img id="image-preview-photo" class="rounded-md object-cover" style="width: 12rem; height: 10rem;" alt="Prévia da nova foto selecionada">
-        <p class="text-sm text-gray-700">Nova foto selecionada. Ela será enviada ao salvar o anúncio.</p>
-    </div>
-    @if ($l?->image_path)
-        <div class="mt-3 flex items-center gap-3 rounded-lg bg-gray-50 p-3">
-            <img src="{{ asset('storage/'.$l->image_path) }}" class="h-20 w-24 rounded-md object-cover" alt="Foto atual de {{ $l->title }}">
-            <p class="text-sm text-gray-600">Foto atual. Envie outra imagem para substituí-la.</p>
-        </div>
-    @endif
-</div>
 
 <label class="flex items-start gap-3 rounded-lg border border-gray-200 p-3 text-sm text-gray-700">
     <input type="checkbox" name="negotiable" value="1" @checked(old('negotiable', $l?->negotiable ?? true)) class="mt-0.5 rounded border-gray-300 text-green-800 focus:ring-green-700">
