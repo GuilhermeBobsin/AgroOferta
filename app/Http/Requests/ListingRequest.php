@@ -77,6 +77,11 @@ class ListingRequest extends FormRequest
                 'mimes:jpg,jpeg,png,webp',
                 'max:4096',
             ],
+            'category_id' => [
+                'required',
+                'integer',
+                Rule::exists('categories', 'id'),
+            ],
         ];
     }
 

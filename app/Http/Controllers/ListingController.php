@@ -96,27 +96,50 @@ class ListingController extends Controller
     }
 
     public function store(ListingRequest $request)
-    {
-        $user = $request->user();
+{
+    $user = $request->user();
 
-        $data = $request->safe()->except(['image', 'latitude', 'longitude']);
-        $coordinates = $request->safe()->only(['latitude', 'longitude']);
+    $data = $request->safe()->except([
+        'image',
+        'latitude',
+        'longitude',
+    ]);
 
-        [$data['latitude'], $data['longitude']] =
-            isset($coordinates['latitude'], $coordinates['longitude'])
-                ? [$coordinates['latitude'], $coordinates['longitude']]
-                : $this->coordinatesForCity($data['city'], $data['state']);
+    $coordinates = $request->safe()->only([
+        'latitude',
+        'longitude',
+    ]);
 
-        if ($request->hasFile('image')) {
-            $data['image_path'] = $request->file('image')->store('listings', 'public');
-        }
+    $sameCity = mb_strtolower(trim((string) $user->city))
+            === mb_strtolower(trim($data['city']))
+        && strtoupper((string) $user->state) === strtoupper($data['state']);
 
-        $listing = $user->listings()->create($data);
-
-        return redirect()
-            ->route('listings.show', $listing)
-            ->with('status', 'Anúncio publicado!');
+    if (isset($coordinates['latitude'], $coordinates['longitude'])) {
+        $data['latitude'] = $coordinates['latitude'];
+        $data['longitude'] = $coordinates['longitude'];
+    } elseif (
+        $sameCity
+        && $user->latitude !== null
+        && $user->longitude !== null
+    ) {
+        $data['latitude'] = $user->latitude;
+        $data['longitude'] = $user->longitude;
+    } else {
+        $data['latitude'] = null;
+        $data['longitude'] = null;
     }
+
+    if ($request->hasFile('image')) {
+        $data['image_path'] = $request->file('image')
+            ->store('listings', 'public');
+    }
+
+    $listing = $user->listings()->create($data);
+
+    return redirect()
+        ->route('listings.show', $listing)
+        ->with('status', 'Anúncio publicado!');
+}
 
     public function edit(Listing $listing)
     {
@@ -131,22 +154,21 @@ class ListingController extends Controller
     public function update(ListingRequest $request, Listing $listing)
     {
         $data = $request->safe()->except(['image', 'latitude', 'longitude']);
-        $coordinates = $request->safe()->only(['latitude', 'longitude']);
+        $coordinates = $request->safe()->only([
+            'latitude',
+            'longitude',
+        ]);
 
-        // Detecta alteração de município ou UF.
-        $moved = mb_strtolower(trim($data['city'])) !== mb_strtolower(trim($listing->city))
+        $moved = mb_strtolower(trim($data['city']))
+                !== mb_strtolower(trim($listing->city))
             || strtoupper($data['state']) !== strtoupper($listing->state);
 
         if (isset($coordinates['latitude'], $coordinates['longitude'])) {
-            // Prioriza as coordenadas fornecidas pelo formulário.
-            [$data['latitude'], $data['longitude']] = [
-                $coordinates['latitude'],
-                $coordinates['longitude'],
-            ];
+            $data['latitude'] = $coordinates['latitude'];
+            $data['longitude'] = $coordinates['longitude'];
         } elseif ($moved) {
-            // Se o local mudou e não há GPS informado, busca o centro do município.
-            [$data['latitude'], $data['longitude']] =
-                $this->coordinatesForCity($data['city'], $data['state']);
+            $data['latitude'] = null;
+            $data['longitude'] = null;
         }
 
         if ($request->hasFile('image')) {
