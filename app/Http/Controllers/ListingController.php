@@ -3,41 +3,60 @@
 namespace App\Http\Controllers;
 
 use App\Enums\ListingStatus;
+use App\Http\Requests\ListingIndexRequest;
 use App\Http\Requests\ListingRequest;
 use App\Http\Requests\ListingStatusRequest;
 use App\Models\Category;
 use App\Models\Listing;
-use App\Models\User;
+use App\Support\BrazilLocation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 
 class ListingController extends Controller
 {
-    public function index(Request $request)
+    public function index(ListingIndexRequest $request)
     {
         $user = $request->user();
-        $sort = $request->get('sort', 'recent');
+        $filters = $request->validated();
+        $sort = $filters['sort'] ?? 'recent';
 
         $query = Listing::active()
             ->with(['category', 'user'])
-            ->when($request->q, fn ($q, $v) => $q->where(function ($w) use ($v) {
-                $w->where('title', 'like', "%{$v}%")->orWhere('description', 'like', "%{$v}%");
+            ->when($filters['q'] ?? null, fn ($q, $v) => $q->where(function ($w) use ($v) {
+                $w->where('title', 'like', "%{$v}%")
+                    ->orWhere('description', 'like', "%{$v}%");
             }))
-            ->when($request->category, fn ($q, $v) => $q->where('category_id', $v))
-            ->when($request->unit, fn ($q, $v) => $q->where('unit', $v))
-            ->when($request->state, fn ($q, $v) => $q->where('state', strtoupper($v)))
-            ->when(is_numeric($request->price_min), fn ($q) => $q->where('price', '>=', $request->price_min))
-            ->when(is_numeric($request->price_max), fn ($q) => $q->where('price', '<=', $request->price_max));
+            ->when($filters['category'] ?? null, fn ($q, $v) => $q->where('category_id', $v))
+            ->when($filters['unit'] ?? null, fn ($q, $v) => $q->where('unit', $v))
+            ->when($filters['state'] ?? null, fn ($q, $v) => $q->where('state', strtoupper($v)))
+            ->when(isset($filters['price_min']), fn ($q) => $q->where('price', '>=', $filters['price_min']))
+            ->when(isset($filters['price_max']), fn ($q) => $q->where('price', '<=', $filters['price_max']));
 
-        $canSortByDistance = $user && $user->latitude && $user->longitude;
+        $canSortByDistance = $user
+            && $user->latitude !== null
+            && $user->longitude !== null;
 
-        match (true) {
-            $sort === 'price_asc' => $query->orderBy('price'),
-            $sort === 'price_desc' => $query->orderByDesc('price'),
-            $sort === 'nearest' && $canSortByDistance => $query->orderByDistance((float) $user->latitude, (float) $user->longitude),
-            default => $query->latest(),
-        };
+        $distanceKm = $filters['distance_km'] ?? null;
+
+        if ($distanceKm !== null && $distanceKm !== '' && $canSortByDistance) {
+            // O filtro por raio também ordena os resultados pela proximidade.
+            $query->nearby(
+                (float) $user->latitude,
+                (float) $user->longitude,
+                (float) $distanceKm
+            );
+        } else {
+            match (true) {
+                $sort === 'price_asc' => $query->orderBy('price'),
+                $sort === 'price_desc' => $query->orderByDesc('price'),
+                $sort === 'nearest' && $canSortByDistance => $query->orderByDistance(
+                    (float) $user->latitude,
+                    (float) $user->longitude
+                ),
+                default => $query->latest(),
+            };
+        }
 
         return view('listings.index', [
             'listings' => $query->paginate(12)->withQueryString(),
@@ -61,20 +80,32 @@ class ListingController extends Controller
     public function mine(Request $request)
     {
         return view('listings.mine', [
-            'listings' => $request->user()->listings()->with(['category', 'negotiations.buyer'])->latest()->get(),
+            'listings' => $request->user()
+                ->listings()
+                ->with(['category', 'negotiations.buyer'])
+                ->latest()
+                ->get(),
         ]);
     }
 
     public function create()
     {
-        return view('listings.create', ['categories' => Category::orderBy('name')->get()]);
+        return view('listings.create', [
+            'categories' => Category::orderBy('name')->get(),
+        ]);
     }
 
     public function store(ListingRequest $request)
     {
         $user = $request->user();
-        $data = $request->safe()->except('image');
-        [$data['latitude'], $data['longitude']] = $this->coordinatesFor($user, $data['city'], $data['state']);
+
+        $data = $request->safe()->except(['image', 'latitude', 'longitude']);
+        $coordinates = $request->safe()->only(['latitude', 'longitude']);
+
+        [$data['latitude'], $data['longitude']] =
+            isset($coordinates['latitude'], $coordinates['longitude'])
+                ? [$coordinates['latitude'], $coordinates['longitude']]
+                : $this->coordinatesForCity($data['city'], $data['state']);
 
         if ($request->hasFile('image')) {
             $data['image_path'] = $request->file('image')->store('listings', 'public');
@@ -82,7 +113,9 @@ class ListingController extends Controller
 
         $listing = $user->listings()->create($data);
 
-        return redirect()->route('listings.show', $listing)->with('status', 'Anúncio publicado!');
+        return redirect()
+            ->route('listings.show', $listing)
+            ->with('status', 'Anúncio publicado!');
     }
 
     public function edit(Listing $listing)
@@ -97,24 +130,38 @@ class ListingController extends Controller
 
     public function update(ListingRequest $request, Listing $listing)
     {
-        $data = $request->safe()->except('image');
+        $data = $request->safe()->except(['image', 'latitude', 'longitude']);
+        $coordinates = $request->safe()->only(['latitude', 'longitude']);
 
-        // Mudou o local: as coordenadas antigas deixam de valer
-        $moved = mb_strtolower($data['city']) !== mb_strtolower($listing->city) || $data['state'] !== $listing->state;
-        if ($moved) {
-            [$data['latitude'], $data['longitude']] = $this->coordinatesFor($request->user(), $data['city'], $data['state']);
+        // Detecta alteração de município ou UF.
+        $moved = mb_strtolower(trim($data['city'])) !== mb_strtolower(trim($listing->city))
+            || strtoupper($data['state']) !== strtoupper($listing->state);
+
+        if (isset($coordinates['latitude'], $coordinates['longitude'])) {
+            // Prioriza as coordenadas fornecidas pelo formulário.
+            [$data['latitude'], $data['longitude']] = [
+                $coordinates['latitude'],
+                $coordinates['longitude'],
+            ];
+        } elseif ($moved) {
+            // Se o local mudou e não há GPS informado, busca o centro do município.
+            [$data['latitude'], $data['longitude']] =
+                $this->coordinatesForCity($data['city'], $data['state']);
         }
 
         if ($request->hasFile('image')) {
             if ($listing->image_path) {
                 Storage::disk('public')->delete($listing->image_path);
             }
+
             $data['image_path'] = $request->file('image')->store('listings', 'public');
         }
 
         $listing->update($data);
 
-        return redirect()->route('listings.mine')->with('status', 'Anúncio atualizado.');
+        return redirect()
+            ->route('listings.mine')
+            ->with('status', 'Anúncio atualizado.');
     }
 
     public function updateStatus(ListingStatusRequest $request, Listing $listing)
@@ -123,7 +170,9 @@ class ListingController extends Controller
 
         $listing->update([
             'status' => $status,
-            'sold_to_id' => $status === ListingStatus::Sold ? $request->validated('buyer_id') : null,
+            'sold_to_id' => $status === ListingStatus::Sold
+                ? $request->validated('buyer_id')
+                : null,
         ]);
 
         return back()->with('status', 'Status atualizado.');
@@ -132,21 +181,19 @@ class ListingController extends Controller
     public function destroy(Listing $listing)
     {
         Gate::authorize('delete', $listing);
-        $listing->delete(); // a foto é removida pelo evento "deleting" do model
+        $listing->delete();
 
-        return redirect()->route('listings.mine')->with('status', 'Anúncio removido.');
+        return redirect()
+            ->route('listings.mine')
+            ->with('status', 'Anúncio removido.');
     }
 
     /**
-     * Só reaproveita a localização do perfil se o anúncio for na mesma cidade/UF do usuário;
-     * caso contrário fica sem coordenadas (e vai para o fim na ordenação por proximidade).
+     * Usa as coordenadas aproximadas do município como fallback
+     * quando o vendedor não fornece uma posição GPS.
      */
-    private function coordinatesFor(User $user, string $city, string $state): array
+    private function coordinatesForCity(string $city, string $state): array
     {
-        $sameCity = $user->latitude && $user->longitude
-            && mb_strtolower(trim((string) $user->city)) === mb_strtolower(trim($city))
-            && strtoupper((string) $user->state) === strtoupper($state);
-
-        return $sameCity ? [$user->latitude, $user->longitude] : [null, null];
+        return BrazilLocation::coordinates($state, $city) ?? [null, null];
     }
 }
