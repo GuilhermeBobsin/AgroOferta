@@ -17,9 +17,15 @@ class ListingStatusRequest extends FormRequest
     {
         return [
             'status' => ['required', Rule::enum(ListingStatus::class)],
-            // Comprador precisa ter negociado este anúncio; vazio = vendido fora da plataforma
-            'buyer_id' => ['nullable', Rule::exists('negotiations', 'buyer_id')
-                ->where('listing_id', $this->route('listing')->id)],
+            // A escolha explícita impede que uma venda seja marcada sem identificar onde ocorreu.
+            'buyer_id' => [
+                Rule::requiredIf($this->input('status') === ListingStatus::Sold->value),
+                Rule::when(
+                    $this->input('buyer_id') === 'outside',
+                    ['in:outside'],
+                    ['nullable', Rule::exists('negotiations', 'buyer_id')->where('listing_id', $this->route('listing')->id)],
+                ),
+            ],
         ];
     }
 }

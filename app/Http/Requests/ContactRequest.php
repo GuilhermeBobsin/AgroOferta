@@ -19,7 +19,9 @@ class ContactRequest extends FormRequest
         $city = trim((string) $this->input('city'));
 
         $this->merge([
-            'city' => $city === '' ? null : (BrazilLocation::city($state, $city) ?? $city),
+            'city' => $city === ''
+                ? null
+                : (BrazilLocation::city($state, $city) ?? $city),
             'state' => $state === '' ? null : $state,
         ]);
     }
@@ -27,7 +29,11 @@ class ContactRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'phone' => ['nullable', 'string', 'regex:/^[0-9()+\-\s]{10,20}$/'],
+            'phone' => [
+                'nullable',
+                'string',
+                'regex:/^[0-9()+\-\s]{10,20}$/',
+            ],
             'city' => [
                 'nullable',
                 'required_with:state',
@@ -50,18 +56,29 @@ class ContactRequest extends FormRequest
                 'required_with:city',
                 Rule::in(array_keys(BrazilLocation::STATES)),
             ],
-            'latitude' => ['nullable', 'numeric', 'between:-90,90'],
-            'longitude' => ['nullable', 'numeric', 'between:-180,180'],
+            'latitude' => [
+                'nullable',
+                'required_with:longitude',
+                'numeric',
+                'between:-90,90',
+            ],
+            'longitude' => [
+                'nullable',
+                'required_with:latitude',
+                'numeric',
+                'between:-180,180',
+            ],
         ];
     }
 
     public function messages(): array
     {
         return [
-            'phone.regex' => 'Informe o telefone com DDD, ex: (55) 99999-9999.',
+            'phone.regex' => 'Informe o telefone com DDD, por exemplo: (55) 99999-9999.',
             'city.required_with' => 'Informe a cidade e o estado juntos.',
             'state.required_with' => 'Informe a cidade e o estado juntos.',
-            'state.in' => 'Selecione um estado válido.',
+            'latitude.required_with' => 'Latitude e longitude precisam ser informadas juntas.',
+            'longitude.required_with' => 'Latitude e longitude precisam ser informadas juntas.',
         ];
     }
 }

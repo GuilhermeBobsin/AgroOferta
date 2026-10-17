@@ -1,10 +1,17 @@
 <x-app-layout>
-    <x-slot name="header"><h2 class="font-semibold text-xl text-gray-800">Novo anúncio</h2></x-slot>
-    <div class="max-w-2xl mx-auto p-4">
-        <form method="POST" action="{{ route('listings.store') }}" enctype="multipart/form-data" class="bg-white rounded-lg shadow p-4 space-y-4">
+    <x-slot name="header">
+        <p class="text-sm font-semibold text-green-800">Compartilhe o que tem disponível</p>
+        <h2 class="mt-1 text-2xl font-bold tracking-tight text-gray-900">Anunciar um insumo</h2>
+        <p class="mt-2 text-sm text-gray-500">Preencha os detalhes para que outros produtores encontrem seu anúncio.</p>
+    </x-slot>
+    <div class="max-w-3xl mx-auto px-4 py-8">
+        <form method="POST" action="{{ route('listings.store') }}" enctype="multipart/form-data" class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-7 space-y-5">
             @csrf
             @include('listings._form')
-            <button class="w-full bg-green-700 text-white py-3 rounded-md">Publicar</button>
+            <div class="flex flex-col-reverse gap-3 border-t border-gray-100 pt-5 sm:flex-row sm:justify-between">
+                <a href="{{ route('home') }}" class="rounded-lg border border-gray-300 px-4 py-3 text-center text-sm font-semibold text-gray-700 hover:bg-gray-50">Cancelar</a>
+                <button class="rounded-lg bg-green-800 px-6 py-3 text-sm font-semibold text-white transition hover:bg-green-900 focus:outline-none focus:ring-2 focus:ring-green-700 focus:ring-offset-2">Publicar anúncio</button>
+            </div>
         </form>
     </div>
 </x-app-layout>
