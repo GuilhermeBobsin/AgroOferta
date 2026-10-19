@@ -14,8 +14,13 @@ class Listing extends Model
 
     public const UNITS = ['kg', 'saca', 'tonelada', 'litro', 'unidade', 'hectare'];
 
-    // Haversine (km). Usa só funções comuns a MySQL/MariaDB e Postgres (não funciona em SQLite).
+    public const SEARCH_RADIUS_OPTIONS = [10, 25, 50, 100, 200];
+
+    // Haversine (km). SQLite usa min/max escalares em vez de greatest/least.
     private const HAVERSINE = '(6371 * acos(greatest(-1, least(1, cos(radians(?)) * cos(radians(latitude))
+        * cos(radians(longitude) - radians(?)) + sin(radians(?)) * sin(radians(latitude))))))';
+
+    private const SQLITE_HAVERSINE = '(6371 * acos(max(-1, min(1, cos(radians(?)) * cos(radians(latitude))
         * cos(radians(longitude) - radians(?)) + sin(radians(?)) * sin(radians(latitude))))))';
 
     protected $fillable = [
@@ -71,19 +76,32 @@ class Listing extends Model
     /** Só anúncios dentro do raio (km), do mais perto ao mais longe. */
     public function scopeNearby(Builder $q, float $lat, float $lng, float $km = 50): Builder
     {
+        $haversine = self::haversineFor($q);
+        // PDO entrega floats como texto no SQLite; o cast preserva a comparação numérica do raio.
+        $radius = $q->getModel()->getConnection()->getDriverName() === 'sqlite' ? 'cast(? as real)' : '?';
+
         return $q->whereNotNull('latitude')->whereNotNull('longitude')
             ->select('listings.*')
-            ->selectRaw(self::HAVERSINE.' as distance', [$lat, $lng, $lat])
-            ->whereRaw(self::HAVERSINE.' <= ?', [$lat, $lng, $lat, $km])
-            ->orderByRaw(self::HAVERSINE, [$lat, $lng, $lat]);
+            ->selectRaw($haversine.' as distance', [$lat, $lng, $lat])
+            ->whereRaw($haversine.' <= '.$radius, [$lat, $lng, $lat, $km])
+            ->orderByRaw($haversine, [$lat, $lng, $lat]);
     }
 
     /** Todos os anúncios por distância; sem coordenadas vão para o fim. */
     public function scopeOrderByDistance(Builder $q, float $lat, float $lng): Builder
     {
+        $haversine = self::haversineFor($q);
+
         return $q->select('listings.*')
-            ->selectRaw(self::HAVERSINE.' as distance', [$lat, $lng, $lat])
+            ->selectRaw($haversine.' as distance', [$lat, $lng, $lat])
             ->orderByRaw('latitude IS NULL')
-            ->orderByRaw(self::HAVERSINE, [$lat, $lng, $lat]);
+            ->orderByRaw($haversine, [$lat, $lng, $lat]);
+    }
+
+    private static function haversineFor(Builder $query): string
+    {
+        return $query->getModel()->getConnection()->getDriverName() === 'sqlite'
+            ? self::SQLITE_HAVERSINE
+            : self::HAVERSINE;
     }
 }
