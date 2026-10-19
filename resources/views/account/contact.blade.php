@@ -49,6 +49,7 @@
                     placeholder="(51) 99999-9999"
                     autocomplete="tel"
                     inputmode="tel"
+                    maxlength="15"
                     class="w-full rounded-lg border-gray-300 focus:border-green-700 focus:ring-green-700"
                 >
 
@@ -146,10 +147,33 @@
 
     <script>
         (() => {
+            const phone = document.getElementById('phone');
             const button = document.getElementById('geo');
             const message = document.getElementById('geo-msg');
             const latitude = document.getElementById('lat');
             const longitude = document.getElementById('lng');
+
+            if (phone) {
+                const formatPhone = () => {
+                    const digits = phone.value.replace(/\D/g, '').slice(0, 11);
+                    if (!digits) {
+                        phone.value = '';
+                        return;
+                    }
+
+                    const areaCode = digits.slice(0, 2);
+                    const subscriber = digits.slice(2);
+                    let formatted = `(${areaCode}`;
+
+                    if (digits.length >= 3) formatted += `) ${subscriber.slice(0, 5)}`;
+                    if (subscriber.length > 5) formatted += `-${subscriber.slice(5, 9)}`;
+
+                    phone.value = formatted;
+                };
+
+                phone.addEventListener('input', formatPhone);
+                formatPhone();
+            }
 
             if (!button || !message || !latitude || !longitude) return;
 
