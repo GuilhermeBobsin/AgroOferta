@@ -100,8 +100,20 @@ class Listing extends Model
 
     private static function haversineFor(Builder $query): string
     {
-        return $query->getModel()->getConnection()->getDriverName() === 'sqlite'
-            ? self::SQLITE_HAVERSINE
-            : self::HAVERSINE;
+        $connection = $query->getModel()->getConnection();
+
+        if ($connection->getDriverName() !== 'sqlite') {
+            return self::HAVERSINE;
+        }
+
+        // SQLite não inclui funções trigonométricas por padrão; registre-as na conexão
+        // para que busca e ordenação por distância funcionem também na instalação local.
+        $pdo = $connection->getPdo();
+        $pdo->sqliteCreateFunction('acos', 'acos', 1);
+        $pdo->sqliteCreateFunction('cos', 'cos', 1);
+        $pdo->sqliteCreateFunction('sin', 'sin', 1);
+        $pdo->sqliteCreateFunction('radians', static fn ($degrees) => deg2rad((float) $degrees), 1);
+
+        return self::SQLITE_HAVERSINE;
     }
 }
