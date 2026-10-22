@@ -3,26 +3,28 @@
 namespace App\Http\Controllers;
 
 use App\Enums\ListingStatus;
+use App\Http\Requests\ListingIndexRequest;
 use App\Http\Requests\ListingRequest;
 use App\Http\Requests\ListingStatusRequest;
 use App\Models\Category;
 use App\Models\Listing;
-use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 
 class ListingController extends Controller
 {
-    public function index(Request $request)
+    public function index(ListingIndexRequest $request)
     {
         $user = $request->user();
-        $sort = $request->get('sort', 'recent');
+        $filters = $request->validated();
+        $sort = $filters['sort'] ?? 'recent';
 
         $query = Listing::active()
             ->with(['category', 'user'])
-            ->when($request->q, fn ($q, $v) => $q->where(function ($w) use ($v) {
-                $w->where('title', 'like', "%{$v}%")->orWhere('description', 'like', "%{$v}%");
+            ->when($filters['q'] ?? null, fn ($q, $v) => $q->where(function ($w) use ($v) {
+                $w->where('title', 'like', "%{$v}%")
+                    ->orWhere('description', 'like', "%{$v}%");
             }))
             ->when($request->category, fn ($q, $v) => $q->where('category_id', $v))
             ->when($request->unit, fn ($q, $v) => $q->where('unit', $v))
@@ -52,8 +54,13 @@ class ListingController extends Controller
         Gate::authorize('view', $listing);
 
         $listing->load(['category', 'user']);
-        $seller = $listing->user->loadCount('reviewsReceived')->loadAvg('reviewsReceived', 'rating');
-        $reviews = $seller->reviewsReceived()->with('reviewer')->latest()->take(5)->get();
+        $seller = $listing->user->loadCount('reviewsReceived')
+            ->loadAvg('reviewsReceived', 'rating');
+        $reviews = $seller->reviewsReceived()
+            ->with('reviewer')
+            ->latest()
+            ->take(5)
+            ->get();
         $isOwner = $request->user()?->id === $listing->user_id;
 
         return view('listings.show', compact('listing', 'seller', 'reviews', 'isOwner'));
@@ -62,31 +69,65 @@ class ListingController extends Controller
     public function mine(Request $request)
     {
         return view('listings.mine', [
-            'listings' => $request->user()->listings()->with(['category', 'negotiations.buyer'])->latest()->get(),
+            'listings' => $request->user()
+                ->listings()
+                ->with(['category', 'negotiations.buyer'])
+                ->latest()
+                ->get(),
         ]);
     }
 
     public function create()
     {
-        return view('listings.create', ['categories' => Category::orderBy('name')->get()]);
+        return view('listings.create', [
+            'categories' => Category::orderBy('name')->get(),
+        ]);
     }
 
     public function store(ListingRequest $request)
     {
         $user = $request->user();
-        $data = $request->safe()->except(['image', 'latitude', 'longitude']);
-        $coordinates = $request->safe()->only(['latitude', 'longitude']);
-        [$data['latitude'], $data['longitude']] = isset($coordinates['latitude'], $coordinates['longitude'])
-            ? [$coordinates['latitude'], $coordinates['longitude']]
-            : $this->coordinatesFor($user, $data['city'], $data['state']);
+
+        $data = $request->safe()->except([
+            'image',
+            'latitude',
+            'longitude',
+        ]);
+
+        $coordinates = $request->safe()->only([
+            'latitude',
+            'longitude',
+        ]);
+
+        $sameCity = mb_strtolower(trim((string) $user->city))
+                === mb_strtolower(trim($data['city']))
+            && strtoupper((string) $user->state) === strtoupper($data['state']);
+
+        if (isset($coordinates['latitude'], $coordinates['longitude'])) {
+            $data['latitude'] = $coordinates['latitude'];
+            $data['longitude'] = $coordinates['longitude'];
+        } elseif (
+            $sameCity
+            && $user->latitude !== null
+            && $user->longitude !== null
+        ) {
+            $data['latitude'] = $user->latitude;
+            $data['longitude'] = $user->longitude;
+        } else {
+            $data['latitude'] = null;
+            $data['longitude'] = null;
+        }
 
         if ($request->hasFile('image')) {
-            $data['image_path'] = $request->file('image')->store('listings', 'public');
+            $data['image_path'] = $request->file('image')
+                ->store('listings', 'public');
         }
 
         $listing = $user->listings()->create($data);
 
-        return redirect()->route('listings.show', $listing)->with('status', 'Anúncio publicado!');
+        return redirect()
+            ->route('listings.show', $listing)
+            ->with('status', 'Anúncio publicado!');
     }
 
     public function edit(Listing $listing)
@@ -101,37 +142,59 @@ class ListingController extends Controller
 
     public function update(ListingRequest $request, Listing $listing)
     {
-        $data = $request->safe()->except(['image', 'latitude', 'longitude']);
-        $coordinates = $request->safe()->only(['latitude', 'longitude']);
+        Gate::authorize('update', $listing);
 
-        // Mudou o local: as coordenadas antigas deixam de valer
-        $moved = mb_strtolower(trim($data['city'])) !== mb_strtolower(trim($listing->city)) || $data['state'] !== $listing->state;
+        $data = $request->safe()->except([
+            'image',
+            'latitude',
+            'longitude',
+        ]);
+
+        $coordinates = $request->safe()->only([
+            'latitude',
+            'longitude',
+        ]);
+
+        $moved = mb_strtolower(trim($data['city']))
+                !== mb_strtolower(trim($listing->city))
+            || strtoupper($data['state']) !== strtoupper($listing->state);
+
         if (isset($coordinates['latitude'], $coordinates['longitude'])) {
-            [$data['latitude'], $data['longitude']] = [$coordinates['latitude'], $coordinates['longitude']];
+            $data['latitude'] = $coordinates['latitude'];
+            $data['longitude'] = $coordinates['longitude'];
         } elseif ($moved) {
-            [$data['latitude'], $data['longitude']] = $this->coordinatesFor($request->user(), $data['city'], $data['state']);
+            $data['latitude'] = null;
+            $data['longitude'] = null;
         }
 
         if ($request->hasFile('image')) {
             if ($listing->image_path) {
                 Storage::disk('public')->delete($listing->image_path);
             }
-            $data['image_path'] = $request->file('image')->store('listings', 'public');
+
+            $data['image_path'] = $request->file('image')
+                ->store('listings', 'public');
         }
 
         $listing->update($data);
 
-        return redirect()->route('listings.mine')->with('status', 'Anúncio atualizado.');
+        return redirect()
+            ->route('listings.mine')
+            ->with('status', 'Anúncio atualizado.');
     }
 
     public function updateStatus(ListingStatusRequest $request, Listing $listing)
     {
+        Gate::authorize('update', $listing);
+
         $status = ListingStatus::from($request->validated('status'));
+        $buyerId = $request->validated('buyer_id');
 
         $listing->update([
             'status' => $status,
-            'sold_to_id' => $status === ListingStatus::Sold && $request->validated('buyer_id') !== 'outside'
-                ? $request->validated('buyer_id')
+            'sold_to_id' => $status === ListingStatus::Sold
+                && $buyerId !== 'outside'
+                ? $buyerId
                 : null,
         ]);
 
@@ -141,21 +204,11 @@ class ListingController extends Controller
     public function destroy(Listing $listing)
     {
         Gate::authorize('delete', $listing);
-        $listing->delete(); // a foto é removida pelo evento "deleting" do model
 
-        return redirect()->route('listings.mine')->with('status', 'Anúncio removido.');
-    }
+        $listing->delete();
 
-    /**
-     * Só reaproveita a localização do perfil se o anúncio for na mesma cidade/UF do usuário;
-     * caso contrário fica sem coordenadas (e vai para o fim na ordenação por proximidade).
-     */
-    private function coordinatesFor(User $user, string $city, string $state): array
-    {
-        $sameCity = $user->latitude !== null && $user->longitude !== null
-            && mb_strtolower(trim((string) $user->city)) === mb_strtolower(trim($city))
-            && strtoupper((string) $user->state) === strtoupper($state);
-
-        return $sameCity ? [$user->latitude, $user->longitude] : [null, null];
+        return redirect()
+            ->route('listings.mine')
+            ->with('status', 'Anúncio removido.');
     }
 }

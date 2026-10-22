@@ -82,6 +82,29 @@ class MarketplaceTest extends TestCase
         $this->post(route('listings.store'), $this->payload())->assertRedirect(route('login'));
     }
 
+    public function test_listing_city_must_belong_to_the_selected_state(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->post(route('listings.store'), $this->payload([
+            'city' => 'Porto Alegre',
+            'state' => 'SP',
+        ]))->assertSessionHasErrors('city');
+    }
+
+    public function test_listing_city_is_saved_with_its_official_spelling(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->post(route('listings.store'), $this->payload([
+            'city' => 'osorio',
+            'state' => 'rs',
+        ]))->assertSessionHasNoErrors();
+
+        $this->assertSame('Osório', Listing::firstOrFail()->city);
+        $this->assertSame('RS', Listing::firstOrFail()->state);
+    }
+
     public function test_listing_in_users_city_inherits_profile_coordinates(): void
     {
         $user = User::factory()->create(['city' => 'Osório', 'state' => 'RS', 'latitude' => -29.88, 'longitude' => -50.27]);
