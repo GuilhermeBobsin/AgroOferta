@@ -66,41 +66,15 @@ class MarketplaceTest extends TestCase
             ->assertDontSee('Caro');
     }
 
-    public function test_distance_filter_is_shown_but_requires_a_profile_location(): void
+    public function test_filters_by_city(): void
     {
-        $this->get(route('home'))
+        Listing::factory()->create(['title' => 'Semente local', 'city' => 'Londrina']);
+        Listing::factory()->create(['title' => 'Semente distante', 'city' => 'Maringá']);
+
+        $this->get('/?city=Londrina')
             ->assertOk()
-            ->assertSee('Distância máxima')
-            ->assertSee('adicione sua localização para filtrar por distância.');
-    }
-
-    public function test_distance_filter_only_accepts_configured_radii(): void
-    {
-        $user = User::factory()->create(['latitude' => -29.88, 'longitude' => -50.27]);
-
-        $this->actingAs($user)->get(route('home', ['distance_km' => 17]))
-            ->assertRedirect()
-            ->assertSessionHasErrors('distance_km');
-    }
-
-    public function test_distance_filter_limits_listings_with_sqlite(): void
-    {
-        $user = User::factory()->create(['latitude' => -29.6730653, 'longitude' => -50.2141525]);
-        Listing::factory()->create([
-            'title' => 'Insumo próximo',
-            'latitude' => -29.6800000,
-            'longitude' => -50.2141525,
-        ]);
-        Listing::factory()->create([
-            'title' => 'Insumo distante',
-            'latitude' => -30.0000000,
-            'longitude' => -50.2141525,
-        ]);
-
-        $this->actingAs($user)->get(route('home', ['distance_km' => 10]))
-            ->assertOk()
-            ->assertSee('Insumo próximo')
-            ->assertDontSee('Insumo distante');
+            ->assertSee('Semente local')
+            ->assertDontSee('Semente distante');
     }
 
     public function test_guest_cannot_create_listing(): void
