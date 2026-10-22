@@ -66,6 +66,27 @@ class MarketplaceTest extends TestCase
             ->assertDontSee('Caro');
     }
 
+    public function test_filters_listings_by_maximum_distance(): void
+    {
+        $user = User::factory()->create(['latitude' => 0, 'longitude' => 0]);
+
+        Listing::factory()->create([
+            'title' => 'Anúncio próximo',
+            'latitude' => 0,
+            'longitude' => 0,
+        ]);
+        Listing::factory()->create([
+            'title' => 'Anúncio distante',
+            'latitude' => 2,
+            'longitude' => 0,
+        ]);
+
+        $this->actingAs($user)->get('/?distance_km=50')
+            ->assertOk()
+            ->assertSee('Anúncio próximo')
+            ->assertDontSee('Anúncio distante');
+    }
+
     public function test_filters_by_city(): void
     {
         Listing::factory()->create(['title' => 'Semente local', 'city' => 'Londrina']);

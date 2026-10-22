@@ -19,6 +19,7 @@ class ListingController extends Controller
         $user = $request->user();
         $filters = $request->validated();
         $sort = $filters['sort'] ?? 'recent';
+        $canSortByDistance = $user && $user->latitude !== null && $user->longitude !== null;
 
         $query = Listing::active()
             ->with(['category', 'user'])
@@ -33,7 +34,13 @@ class ListingController extends Controller
             ->when(is_numeric($request->price_min), fn ($q) => $q->where('price', '>=', $request->price_min))
             ->when(is_numeric($request->price_max), fn ($q) => $q->where('price', '<=', $request->price_max));
 
-        $canSortByDistance = $user && $user->latitude !== null && $user->longitude !== null;
+        if (($filters['distance_km'] ?? null) !== null && $canSortByDistance) {
+            $query->nearby(
+                (float) $user->latitude,
+                (float) $user->longitude,
+                (float) $filters['distance_km'],
+            );
+        }
 
         match (true) {
             $sort === 'price_asc' => $query->orderBy('price'),
