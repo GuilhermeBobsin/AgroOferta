@@ -26,6 +26,7 @@ class ListingController extends Controller
             }))
             ->when($request->category, fn ($q, $v) => $q->where('category_id', $v))
             ->when($request->unit, fn ($q, $v) => $q->where('unit', $v))
+            ->when($request->filled('city'), fn ($q) => $q->where('city', 'like', '%'.trim($request->city).'%'))
             ->when($request->state, fn ($q, $v) => $q->where('state', strtoupper($v)))
             ->when(is_numeric($request->price_min), fn ($q) => $q->where('price', '>=', $request->price_min))
             ->when(is_numeric($request->price_max), fn ($q) => $q->where('price', '<=', $request->price_max));
