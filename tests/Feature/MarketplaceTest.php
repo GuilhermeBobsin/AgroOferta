@@ -66,6 +66,17 @@ class MarketplaceTest extends TestCase
             ->assertDontSee('Caro');
     }
 
+    public function test_filters_by_city(): void
+    {
+        Listing::factory()->create(['title' => 'Semente local', 'city' => 'Londrina']);
+        Listing::factory()->create(['title' => 'Semente distante', 'city' => 'Maringá']);
+
+        $this->get('/?city=Londrina')
+            ->assertOk()
+            ->assertSee('Semente local')
+            ->assertDontSee('Semente distante');
+    }
+
     public function test_guest_cannot_create_listing(): void
     {
         $this->post(route('listings.store'), $this->payload())->assertRedirect(route('login'));
