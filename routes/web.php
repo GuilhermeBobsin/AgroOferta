@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AccountController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ListingController;
 use App\Http\Controllers\NegotiationController;
 use App\Http\Controllers\ProfileController;
@@ -37,6 +38,6 @@ Route::middleware('auth')->group(function () {
 
 Route::get('/anuncios/{listing}', [ListingController::class, 'show'])->name('listings.show');
 
-Route::get('/dashboard', fn () => redirect()->route('home'))->middleware('auth')->name('dashboard');
+Route::get('/dashboard', DashboardController::class)->middleware('auth')->name('dashboard');
 
 require __DIR__.'/auth.php';

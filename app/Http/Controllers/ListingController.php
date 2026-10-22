@@ -26,35 +26,21 @@ class ListingController extends Controller
                 $w->where('title', 'like', "%{$v}%")
                     ->orWhere('description', 'like', "%{$v}%");
             }))
-            ->when($filters['category'] ?? null, fn ($q, $v) => $q->where('category_id', $v))
-            ->when($filters['unit'] ?? null, fn ($q, $v) => $q->where('unit', $v))
-            ->when($filters['state'] ?? null, fn ($q, $v) => $q->where('state', strtoupper($v)))
-            ->when(isset($filters['price_min']), fn ($q) => $q->where('price', '>=', $filters['price_min']))
-            ->when(isset($filters['price_max']), fn ($q) => $q->where('price', '<=', $filters['price_max']));
+            ->when($request->category, fn ($q, $v) => $q->where('category_id', $v))
+            ->when($request->unit, fn ($q, $v) => $q->where('unit', $v))
+            ->when($request->filled('city'), fn ($q) => $q->where('city', 'like', '%'.trim($request->city).'%'))
+            ->when($request->state, fn ($q, $v) => $q->where('state', strtoupper($v)))
+            ->when(is_numeric($request->price_min), fn ($q) => $q->where('price', '>=', $request->price_min))
+            ->when(is_numeric($request->price_max), fn ($q) => $q->where('price', '<=', $request->price_max));
 
-        $canSortByDistance = $user
-            && $user->latitude !== null
-            && $user->longitude !== null;
+        $canSortByDistance = $user && $user->latitude !== null && $user->longitude !== null;
 
-        $distanceKm = $filters['distance_km'] ?? null;
-
-        if ($distanceKm !== null && $distanceKm !== '' && $canSortByDistance) {
-            $query->nearby(
-                (float) $user->latitude,
-                (float) $user->longitude,
-                (float) $distanceKm
-            );
-        } else {
-            match (true) {
-                $sort === 'price_asc' => $query->orderBy('price'),
-                $sort === 'price_desc' => $query->orderByDesc('price'),
-                $sort === 'nearest' && $canSortByDistance => $query->orderByDistance(
-                    (float) $user->latitude,
-                    (float) $user->longitude
-                ),
-                default => $query->latest(),
-            };
-        }
+        match (true) {
+            $sort === 'price_asc' => $query->orderBy('price'),
+            $sort === 'price_desc' => $query->orderByDesc('price'),
+            $sort === 'nearest' && $canSortByDistance => $query->orderByDistance((float) $user->latitude, (float) $user->longitude),
+            default => $query->latest(),
+        };
 
         return view('listings.index', [
             'listings' => $query->paginate(12)->withQueryString(),

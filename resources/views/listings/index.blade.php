@@ -102,6 +102,11 @@
                     </div>
 
                     <div>
+                        <label for="city" class="mb-1 block text-xs font-semibold text-gray-600">Cidade</label>
+                        <input id="city" name="city" value="{{ request('city') }}" maxlength="100" placeholder="Ex.: Londrina" class="w-full rounded-lg border-gray-300 text-sm focus:border-green-700 focus:ring-green-700">
+                    </div>
+
+                    <div>
                         <label for="state" class="mb-1 block text-xs font-semibold text-gray-600">Estado (UF)</label>
                         <input id="state" name="state" value="{{ request('state') }}"
                             maxlength="2" placeholder="RS"
