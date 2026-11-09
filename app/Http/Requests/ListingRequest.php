@@ -41,7 +41,7 @@ class ListingRequest extends FormRequest
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:5000'],
             'price' => ['required', 'numeric', 'min:0', 'max:9999999999.99'],
-            'unit' => ['required', 'in:' . implode(',', Listing::UNITS)],
+            'unit' => ['required', 'in:'.implode(',', Listing::UNITS)],
             'quantity' => ['nullable', 'numeric', 'min:0', 'max:9999999999'],
             'negotiable' => ['boolean'],
             'city' => [
@@ -73,6 +73,8 @@ class ListingRequest extends FormRequest
                 'numeric',
                 'between:-180,180',
             ],
+            'location_precision' => ['prohibited'],
+            'use_exact_location' => ['nullable', 'boolean'],
             'image' => [
                 'nullable',
                 'image',

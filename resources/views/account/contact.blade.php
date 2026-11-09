@@ -86,6 +86,7 @@
             </div>
 
             <div class="rounded-xl bg-green-50 p-4">
+                @php($hasExactLocation = $user->latitude !== null && $user->longitude !== null && $user->location_precision !== 'city')
                 <input
                     type="hidden"
                     name="latitude"
@@ -99,6 +100,8 @@
                     id="lng"
                     value="{{ old('longitude', $user->longitude) }}"
                 >
+                <input type="hidden" name="use_exact_location" id="use-exact-location"
+                    value="{{ old('use_exact_location', $hasExactLocation ? '1' : '0') }}">
 
                 <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
@@ -107,9 +110,13 @@
                         </h3>
 
                         <p id="geo-msg" aria-live="polite" class="mt-1 text-sm text-gray-600">
-                            {{ $user->latitude !== null && $user->longitude !== null
-                                ? 'Coordenadas salvas.'
-                                : 'Coordenadas ainda não definidas.' }}
+                            @if ($hasExactLocation)
+                                Sua posição exata está salva.
+                            @elseif ($user->city && $user->state)
+                                A busca usará o centro aproximado de {{ $user->city }}, {{ $user->state }}.
+                            @else
+                                Informe cidade e estado ou use sua localização atual para buscar por distância.
+                            @endif
                         </p>
                     </div>
 
@@ -118,9 +125,16 @@
                         id="geo"
                         class="shrink-0 rounded-lg border border-green-800 px-4 py-2 text-sm font-semibold text-green-900 transition hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-700"
                     >
-                        Usar minha localização
+                        Usar minha localização exata
                     </button>
                 </div>
+
+                @if ($hasExactLocation)
+                    <button type="button" id="use-city-location"
+                        class="mt-3 text-sm font-semibold text-green-900 underline underline-offset-2">
+                        Usar somente o centro da cidade
+                    </button>
+                @endif
 
                 <p class="mt-3 text-xs leading-5 text-gray-600">
                     As coordenadas ajudam a ordenar anúncios por distância.
@@ -152,6 +166,8 @@
             const message = document.getElementById('geo-msg');
             const latitude = document.getElementById('lat');
             const longitude = document.getElementById('lng');
+            const useExactLocation = document.getElementById('use-exact-location');
+            const useCityLocation = document.getElementById('use-city-location');
 
             if (phone) {
                 const formatPhone = () => {
@@ -190,6 +206,7 @@
                     (position) => {
                         latitude.value = position.coords.latitude;
                         longitude.value = position.coords.longitude;
+                        useExactLocation.value = '1';
                         message.textContent =
                             'Localização obtida. Salve as alterações para confirmar.';
                         button.disabled = false;
@@ -205,6 +222,13 @@
                         maximumAge: 60000
                     }
                 );
+            });
+
+            useCityLocation?.addEventListener('click', () => {
+                latitude.value = '';
+                longitude.value = '';
+                useExactLocation.value = '0';
+                message.textContent = 'O centro da cidade será usado ao salvar as alterações.';
             });
         })();
     </script>

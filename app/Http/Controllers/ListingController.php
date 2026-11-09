@@ -8,6 +8,7 @@ use App\Http\Requests\ListingRequest;
 use App\Http\Requests\ListingStatusRequest;
 use App\Models\Category;
 use App\Models\Listing;
+use App\Support\BrazilLocation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
@@ -19,7 +20,8 @@ class ListingController extends Controller
         $user = $request->user();
         $filters = $request->validated();
         $sort = $filters['sort'] ?? 'recent';
-        $canSortByDistance = $user && $user->latitude !== null && $user->longitude !== null;
+        $origin = $user?->coordinatesForDistance();
+        $canSortByDistance = $origin !== null;
 
         $query = Listing::active()
             ->with(['category', 'user'])
@@ -36,8 +38,8 @@ class ListingController extends Controller
 
         if (($filters['distance_km'] ?? null) !== null && $canSortByDistance) {
             $query->nearby(
-                (float) $user->latitude,
-                (float) $user->longitude,
+                $origin[0],
+                $origin[1],
                 (float) $filters['distance_km'],
             );
         }
@@ -45,7 +47,8 @@ class ListingController extends Controller
         match (true) {
             $sort === 'price_asc' => $query->orderBy('price'),
             $sort === 'price_desc' => $query->orderByDesc('price'),
-            $sort === 'nearest' && $canSortByDistance => $query->orderByDistance((float) $user->latitude, (float) $user->longitude),
+            $sort === 'nearest' && $canSortByDistance && ($filters['distance_km'] ?? null) !== null => $query->orderBy('distance'),
+            $sort === 'nearest' && $canSortByDistance => $query->orderByDistance($origin[0], $origin[1]),
             default => $query->latest(),
         };
 
@@ -99,6 +102,8 @@ class ListingController extends Controller
             'image',
             'latitude',
             'longitude',
+            'location_precision',
+            'use_exact_location',
         ]);
 
         $coordinates = $request->safe()->only([
@@ -106,23 +111,12 @@ class ListingController extends Controller
             'longitude',
         ]);
 
-        $sameCity = mb_strtolower(trim((string) $user->city))
-                === mb_strtolower(trim($data['city']))
-            && strtoupper((string) $user->state) === strtoupper($data['state']);
-
-        if (isset($coordinates['latitude'], $coordinates['longitude'])) {
+        if ($request->boolean('use_exact_location') && isset($coordinates['latitude'], $coordinates['longitude'])) {
             $data['latitude'] = $coordinates['latitude'];
             $data['longitude'] = $coordinates['longitude'];
-        } elseif (
-            $sameCity
-            && $user->latitude !== null
-            && $user->longitude !== null
-        ) {
-            $data['latitude'] = $user->latitude;
-            $data['longitude'] = $user->longitude;
+            $data['location_precision'] = 'exact';
         } else {
-            $data['latitude'] = null;
-            $data['longitude'] = null;
+            $this->useCityCoordinates($data);
         }
 
         if ($request->hasFile('image')) {
@@ -155,6 +149,8 @@ class ListingController extends Controller
             'image',
             'latitude',
             'longitude',
+            'location_precision',
+            'use_exact_location',
         ]);
 
         $coordinates = $request->safe()->only([
@@ -166,12 +162,19 @@ class ListingController extends Controller
                 !== mb_strtolower(trim($listing->city))
             || strtoupper($data['state']) !== strtoupper($listing->state);
 
-        if (isset($coordinates['latitude'], $coordinates['longitude'])) {
+        $sameCoordinates = $listing->latitude !== null && $listing->longitude !== null
+            && isset($coordinates['latitude'], $coordinates['longitude'])
+            && (float) $coordinates['latitude'] === (float) $listing->latitude
+            && (float) $coordinates['longitude'] === (float) $listing->longitude;
+
+        if ($request->boolean('use_exact_location')
+            && isset($coordinates['latitude'], $coordinates['longitude'])
+            && ! ($moved && $sameCoordinates)) {
             $data['latitude'] = $coordinates['latitude'];
             $data['longitude'] = $coordinates['longitude'];
-        } elseif ($moved) {
-            $data['latitude'] = null;
-            $data['longitude'] = null;
+            $data['location_precision'] = 'exact';
+        } elseif ($moved || ! isset($coordinates['latitude'], $coordinates['longitude'])) {
+            $this->useCityCoordinates($data);
         }
 
         if ($request->hasFile('image')) {
@@ -217,5 +220,15 @@ class ListingController extends Controller
         return redirect()
             ->route('listings.mine')
             ->with('status', 'Anúncio removido.');
+    }
+
+    /** @param array<string, mixed> $data */
+    private function useCityCoordinates(array &$data): void
+    {
+        $coordinates = BrazilLocation::coordinates($data['state'], $data['city']);
+
+        $data['latitude'] = $coordinates[0] ?? null;
+        $data['longitude'] = $coordinates[1] ?? null;
+        $data['location_precision'] = $coordinates ? 'city' : null;
     }
 }
