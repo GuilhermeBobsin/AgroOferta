@@ -11,7 +11,6 @@
                         <a href="{{ route('dashboard') }}" @class(['text-green-800 font-semibold' => request()->routeIs('dashboard'), 'hover:text-green-700' => ! request()->routeIs('dashboard')])>Painel</a>
                         <a href="{{ route('listings.mine') }}" @class(['text-green-800 font-semibold' => request()->routeIs('listings.mine'), 'hover:text-green-700' => ! request()->routeIs('listings.mine')])>Meus anúncios</a>
                         <a href="{{ route('negotiations.index') }}" @class(['text-green-800 font-semibold' => request()->routeIs('negotiations.*'), 'hover:text-green-700' => ! request()->routeIs('negotiations.*')])>Negociações</a>
-                        <a href="{{ route('listings.create') }}" class="rounded-full bg-green-800 px-4 py-2 text-white hover:bg-green-900">Anunciar</a>
                     @endauth
                 </div>
             </div>

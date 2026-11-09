@@ -17,6 +17,19 @@
             <div role="alert" class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">Selecione um comprador que negociou este anúncio ou informe que a venda ocorreu fora do AgroOferta.</div>
         @enderror
 
+        <nav aria-label="Filtrar anúncios por venda" class="flex flex-wrap gap-2">
+            @foreach (['all' => 'Todos os anúncios', 'open' => 'Vendas em aberto', 'closed' => 'Vendas fechadas'] as $value => $label)
+                <a href="{{ route('listings.mine', $value === 'all' ? [] : ['sales' => $value]) }}"
+                    @class([
+                        'rounded-lg px-4 py-2 text-sm font-semibold transition',
+                        'bg-green-800 text-white' => $salesFilter === $value,
+                        'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50' => $salesFilter !== $value,
+                    ])>
+                    {{ $label }}
+                </a>
+            @endforeach
+        </nav>
+
         @forelse ($listings as $l)
             <article class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
                 <div class="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:p-5">
@@ -93,9 +106,18 @@
         @empty
             <div class="rounded-2xl border border-dashed border-gray-300 bg-white px-6 py-12 text-center">
                 <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-green-50 text-green-800"><x-application-logo class="h-8 w-8" /></div>
-                <h2 class="mt-4 text-lg font-semibold text-gray-900">Você ainda não publicou anúncios</h2>
-                <p class="mt-2 text-sm text-gray-500">Anuncie um insumo disponível para que outros produtores possam encontrá-lo.</p>
-                <a href="{{ route('listings.create') }}" class="mt-5 inline-flex rounded-lg bg-green-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-900">Criar meu primeiro anúncio</a>
+                @if ($salesFilter === 'closed')
+                    <h2 class="mt-4 text-lg font-semibold text-gray-900">Nenhuma venda fechada ainda</h2>
+                    <p class="mt-2 text-sm text-gray-500">Quando você concluir uma venda, ela aparecerá aqui.</p>
+                @elseif ($salesFilter === 'open')
+                    <h2 class="mt-4 text-lg font-semibold text-gray-900">Nenhuma venda em aberto</h2>
+                    <p class="mt-2 text-sm text-gray-500">Publique um anúncio para começar a negociar.</p>
+                    <a href="{{ route('listings.create') }}" class="mt-5 inline-flex rounded-lg bg-green-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-900">Criar meu primeiro anúncio</a>
+                @else
+                    <h2 class="mt-4 text-lg font-semibold text-gray-900">Você ainda não publicou anúncios</h2>
+                    <p class="mt-2 text-sm text-gray-500">Anuncie um insumo disponível para que outros produtores possam encontrá-lo.</p>
+                    <a href="{{ route('listings.create') }}" class="mt-5 inline-flex rounded-lg bg-green-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-900">Criar meu primeiro anúncio</a>
+                @endif
             </div>
         @endforelse
     </div>

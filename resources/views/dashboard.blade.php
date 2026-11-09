@@ -10,7 +10,7 @@
             @foreach ([
                 ['label' => 'Anúncios ativos', 'value' => $stats['activeListings'], 'icon' => '📦', 'href' => route('listings.mine')],
                 ['label' => 'Negociações', 'value' => $stats['negotiations'], 'icon' => '💬', 'href' => route('negotiations.index')],
-                ['label' => 'Vendas registradas', 'value' => $stats['completedSales'], 'icon' => '🤝', 'href' => route('listings.mine')],
+                ['label' => 'Vendas registradas', 'value' => $stats['completedSales'], 'icon' => '🤝', 'href' => route('listings.mine', ['sales' => 'closed'])],
             ] as $stat)
                 <a href="{{ $stat['href'] }}" class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:border-green-300 hover:shadow-md">
                     <div class="flex items-center justify-between">
@@ -21,17 +21,6 @@
                     <span class="mt-2 inline-block text-sm font-semibold text-green-800">Ver detalhes <span aria-hidden="true">→</span></span>
                 </a>
             @endforeach
-        </section>
-
-        <section class="flex flex-col justify-between gap-4 rounded-2xl bg-gradient-to-r from-green-950 to-green-800 p-6 text-white shadow-sm sm:flex-row sm:items-center sm:p-8">
-            <div>
-                <h2 class="text-xl font-bold">Tem insumo sobrando ou precisa comprar?</h2>
-                <p class="mt-1 max-w-2xl text-sm leading-6 text-green-100">Anuncie o que está disponível ou explore ofertas de outros produtores da sua região.</p>
-            </div>
-            <div class="flex shrink-0 flex-wrap gap-2">
-                <a href="{{ route('listings.create') }}" class="rounded-lg bg-amber-300 px-4 py-2.5 text-sm font-bold text-green-950 hover:bg-amber-200">Criar anúncio</a>
-                <a href="{{ route('home') }}" class="rounded-lg border border-white/40 px-4 py-2.5 text-sm font-semibold text-white hover:bg-white/10">Buscar insumos</a>
-            </div>
         </section>
 
         <div class="grid gap-8 lg:grid-cols-2">
