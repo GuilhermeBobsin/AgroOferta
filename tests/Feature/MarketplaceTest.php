@@ -87,6 +87,17 @@ class MarketplaceTest extends TestCase
             ->assertDontSee('Anúncio distante');
     }
 
+    public function test_distance_filter_keeps_the_price_order_selected_by_the_user(): void
+    {
+        $user = User::factory()->create(['latitude' => 0, 'longitude' => 0]);
+        Listing::factory()->create(['title' => 'Mais perto e caro', 'price' => 100, 'latitude' => 0, 'longitude' => 0]);
+        Listing::factory()->create(['title' => 'Mais longe e barato', 'price' => 10, 'latitude' => 0.1, 'longitude' => 0]);
+
+        $this->actingAs($user)->get('/?distance_km=50&sort=price_asc')
+            ->assertOk()
+            ->assertSeeInOrder(['Mais longe e barato', 'Mais perto e caro']);
+    }
+
     public function test_filters_by_city(): void
     {
         Listing::factory()->create(['title' => 'Semente local', 'city' => 'Londrina']);
@@ -126,7 +137,7 @@ class MarketplaceTest extends TestCase
         $this->assertSame('RS', Listing::firstOrFail()->state);
     }
 
-    public function test_listing_in_users_city_inherits_profile_coordinates(): void
+    public function test_listing_uses_city_coordinates_even_when_profile_has_an_exact_position(): void
     {
         $user = User::factory()->create(['city' => 'Osório', 'state' => 'RS', 'latitude' => -29.88, 'longitude' => -50.27]);
 
@@ -134,26 +145,78 @@ class MarketplaceTest extends TestCase
 
         $listing = Listing::firstOrFail();
         $this->assertEquals('RS', $listing->state);
-        $this->assertEquals(-29.88, (float) $listing->latitude);
+        $this->assertNotEquals(-29.88, (float) $listing->latitude);
+        $this->assertSame('city', $listing->location_precision);
     }
 
-    public function test_listing_in_another_city_has_no_coordinates(): void
+    public function test_listing_uses_exact_coordinates_only_when_explicitly_requested(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->post(route('listings.store'), $this->payload([
+            'latitude' => -29.88,
+            'longitude' => -50.27,
+            'use_exact_location' => true,
+        ]))->assertRedirect();
+
+        $listing = Listing::firstOrFail();
+        $this->assertEquals(-29.88, (float) $listing->latitude);
+        $this->assertSame('exact', $listing->location_precision);
+    }
+
+    public function test_listing_in_another_city_uses_its_city_coordinates(): void
     {
         $user = User::factory()->create(['city' => 'Osório', 'state' => 'RS', 'latitude' => -29.88, 'longitude' => -50.27]);
 
         $this->actingAs($user)->post(route('listings.store'), $this->payload(['city' => 'Porto Alegre']));
 
-        $this->assertNull(Listing::firstOrFail()->latitude);
+        $listing = Listing::firstOrFail();
+        $this->assertNotNull($listing->latitude);
+        $this->assertSame('city', $listing->location_precision);
     }
 
-    public function test_changing_city_clears_old_coordinates(): void
+    public function test_changing_city_replaces_an_old_exact_position_with_city_coordinates(): void
     {
         $user = User::factory()->create();
         $listing = Listing::factory()->for($user)->create(['latitude' => -29.88, 'longitude' => -50.27]);
 
         $this->actingAs($user)->put(route('listings.update', $listing), $this->payload(['city' => 'Pelotas']));
 
-        $this->assertNull($listing->fresh()->latitude);
+        $this->assertNotNull($listing->fresh()->latitude);
+        $this->assertSame('city', $listing->fresh()->location_precision);
+    }
+
+    public function test_profile_city_enables_distance_filter_without_exact_location(): void
+    {
+        $user = User::factory()->create(['city' => 'Osório', 'state' => 'RS']);
+        Listing::factory()->create([
+            'title' => 'Anúncio em Osório',
+            'latitude' => -29.886,
+            'longitude' => -50.269,
+        ]);
+
+        $this->actingAs($user)->get('/?distance_km=10')
+            ->assertOk()
+            ->assertSee('Anúncio em Osório');
+    }
+
+    public function test_editing_city_from_the_form_does_not_keep_the_old_exact_position(): void
+    {
+        $user = User::factory()->create();
+        $listing = Listing::factory()->for($user)->create([
+            'latitude' => -29.88,
+            'longitude' => -50.27,
+            'location_precision' => 'exact',
+        ]);
+
+        $this->actingAs($user)->put(route('listings.update', $listing), $this->payload([
+            'city' => 'Pelotas',
+            'latitude' => -29.88,
+            'longitude' => -50.27,
+        ]));
+
+        $this->assertSame('city', $listing->fresh()->location_precision);
+        $this->assertNotEquals(-29.88, (float) $listing->fresh()->latitude);
     }
 
     public function test_only_owner_can_edit_or_delete(): void

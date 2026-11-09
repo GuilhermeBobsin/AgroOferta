@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ContactRequest;
+use App\Support\BrazilLocation;
 use Illuminate\Http\Request;
 
 class AccountController extends Controller
@@ -27,10 +28,20 @@ class AccountController extends Controller
             && (float) $data['latitude'] === (float) $user->latitude
             && (float) $data['longitude'] === (float) $user->longitude;
 
-        if ($locationChanged && $coordinatesUnchanged) {
-            $data['latitude'] = null;
-            $data['longitude'] = null;
+        if ($request->boolean('use_exact_location')
+            && isset($data['latitude'], $data['longitude'])
+            && ! ($locationChanged && $coordinatesUnchanged)) {
+            $data['location_precision'] = 'exact';
+        } else {
+            $coordinates = $newCity && $newState
+                ? BrazilLocation::coordinates($newState, $newCity)
+                : null;
+            $data['latitude'] = $coordinates[0] ?? null;
+            $data['longitude'] = $coordinates[1] ?? null;
+            $data['location_precision'] = $coordinates ? 'city' : null;
         }
+
+        unset($data['use_exact_location']);
 
         $user->update($data);
 

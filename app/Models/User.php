@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\BrazilLocation;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -27,6 +28,7 @@ class User extends Authenticatable
         'state',
         'latitude',
         'longitude',
+        'location_precision',
     ];
 
     /**
@@ -52,7 +54,7 @@ class User extends Authenticatable
         ];
     }
 
-        public function listings()
+    public function listings()
     {
         return $this->hasMany(Listing::class);
     }
@@ -73,5 +75,17 @@ class User extends Authenticatable
         }
 
         return 'https://wa.me/'.$digits.($text ? '?text='.rawurlencode($text) : '');
+    }
+
+    /** @return array{0: float, 1: float}|null */
+    public function coordinatesForDistance(): ?array
+    {
+        if ($this->latitude !== null && $this->longitude !== null) {
+            return [(float) $this->latitude, (float) $this->longitude];
+        }
+
+        return $this->city && $this->state
+            ? BrazilLocation::coordinates($this->state, $this->city)
+            : null;
     }
 }

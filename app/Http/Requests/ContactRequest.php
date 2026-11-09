@@ -68,6 +68,8 @@ class ContactRequest extends FormRequest
                 'numeric',
                 'between:-180,180',
             ],
+            'location_precision' => ['prohibited'],
+            'use_exact_location' => ['nullable', 'boolean'],
         ];
     }
 

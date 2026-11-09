@@ -171,13 +171,13 @@
                     @auth
                         Para ordenar ou filtrar por distância,
                         <a class="font-medium text-green-800 underline underline-offset-2" href="{{ route('account.edit') }}">
-                            adicione sua localização ao perfil
+                            informe sua cidade/UF ou sua localização exata no perfil
                         </a>.
                     @else
                         <a class="font-medium text-green-800 underline underline-offset-2" href="{{ route('login') }}">
                             Entre na sua conta
                         </a>
-                        e adicione sua localização para filtrar por distância.
+                        e informe cidade/UF ou localização exata para filtrar por distância.
                     @endauth
                 </p>
             @endunless

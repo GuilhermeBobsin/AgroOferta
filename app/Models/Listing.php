@@ -25,7 +25,7 @@ class Listing extends Model
 
     protected $fillable = [
         'user_id', 'category_id', 'title', 'description', 'price', 'unit', 'quantity',
-        'negotiable', 'image_path', 'city', 'state', 'latitude', 'longitude', 'status', 'sold_to_id',
+        'negotiable', 'image_path', 'city', 'state', 'latitude', 'longitude', 'location_precision', 'status', 'sold_to_id',
     ];
 
     protected $casts = [
@@ -73,7 +73,7 @@ class Listing extends Model
         return $q->where('status', ListingStatus::Active->value);
     }
 
-    /** Só anúncios dentro do raio (km), do mais perto ao mais longe. */
+    /** Só anúncios dentro do raio (km), preservando a ordenação escolhida. */
     public function scopeNearby(Builder $q, float $lat, float $lng, float $km = 50): Builder
     {
         $haversine = self::haversineFor($q);
@@ -83,8 +83,7 @@ class Listing extends Model
         return $q->whereNotNull('latitude')->whereNotNull('longitude')
             ->select('listings.*')
             ->selectRaw($haversine.' as distance', [$lat, $lng, $lat])
-            ->whereRaw($haversine.' <= '.$radius, [$lat, $lng, $lat, $km])
-            ->orderByRaw($haversine, [$lat, $lng, $lat]);
+            ->whereRaw($haversine.' <= '.$radius, [$lat, $lng, $lat, $km]);
     }
 
     /** Todos os anúncios por distância; sem coordenadas vão para o fim. */

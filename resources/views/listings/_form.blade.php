@@ -100,20 +100,25 @@
         prefix="listing-location"
     />
 
+    @php($hasExactLocation = $l?->latitude !== null && $l?->longitude !== null && $l?->location_precision !== 'city')
     <input type="hidden" name="latitude" id="listing-latitude"
         value="{{ old('latitude', $l?->latitude) }}">
     <input type="hidden" name="longitude" id="listing-longitude"
         value="{{ old('longitude', $l?->longitude) }}">
+    <input type="hidden" name="use_exact_location" id="listing-use-exact-location"
+        value="{{ old('use_exact_location', $hasExactLocation ? '1' : '0') }}">
 
     <div class="mt-3 rounded-xl bg-green-50 p-4">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p id="listing-geo-message" aria-live="polite" class="text-sm text-gray-700">
                 @if (old('latitude') !== null && old('longitude') !== null)
                     Localização do produto selecionada. Salve o anúncio para aplicar.
-                @elseif ($l?->latitude !== null && $l?->longitude !== null)
-                    Este anúncio já tem coordenadas salvas.
+                @elseif ($hasExactLocation)
+                    Este anúncio usa uma posição exata salva.
+                @elseif ($l?->city && $l?->state)
+                    Este anúncio usará o centro aproximado de {{ $l->city }}, {{ $l->state }}.
                 @else
-                    Marque a localização do produto para calcular distâncias com mais precisão.
+                    A cidade escolhida será usada como localização aproximada.
                 @endif
             </p>
 
@@ -123,9 +128,15 @@
             </button>
         </div>
 
+        @if ($hasExactLocation)
+            <button type="button" id="listing-use-city-location"
+                class="mt-3 text-sm font-semibold text-green-900 underline underline-offset-2">
+                Usar somente o centro da cidade
+            </button>
+        @endif
+
         <p class="mt-2 text-xs leading-5 text-gray-600">
-            Sem coordenadas próprias, poderá ser usada a localização aproximada da cidade.
-            Os outros usuários verão apenas a distância aproximada.
+            A cidade sempre fornece uma distância aproximada. A posição exata é opcional e não é exibida aos outros usuários.
         </p>
     </div>
 </div>
@@ -184,6 +195,11 @@
         const imageInput = document.getElementById('image');
         const imagePreview = document.getElementById('image-preview');
         const imagePreviewPhoto = document.getElementById('image-preview-photo');
+        const listingMessage = document.getElementById('listing-geo-message');
+        const listingLatitude = document.getElementById('listing-latitude');
+        const listingLongitude = document.getElementById('listing-longitude');
+        const useExactLocation = document.getElementById('listing-use-exact-location');
+        const useCityLocation = document.getElementById('listing-use-city-location');
         let imagePreviewUrl;
 
         imageInput?.addEventListener('change', () => {
@@ -225,6 +241,7 @@
                 (position) => {
                     latitude.value = position.coords.latitude.toFixed(7);
                     longitude.value = position.coords.longitude.toFixed(7);
+                    useExactLocation.value = '1';
                     message.textContent =
                         'Localização obtida. Revise cidade e estado e salve o anúncio.';
                     button.disabled = false;
@@ -237,6 +254,13 @@
                 },
                 { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
             );
+        });
+
+        useCityLocation?.addEventListener('click', () => {
+            listingLatitude.value = '';
+            listingLongitude.value = '';
+            useExactLocation.value = '0';
+            listingMessage.textContent = 'O centro da cidade será usado ao salvar o anúncio.';
         });
     })();
 </script>
