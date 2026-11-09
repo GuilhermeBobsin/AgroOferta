@@ -78,12 +78,25 @@ class ListingController extends Controller
 
     public function mine(Request $request)
     {
+        $salesFilter = $request->input('sales', 'all');
+        $salesFilter = in_array($salesFilter, ['all', 'open', 'closed'], true)
+            ? $salesFilter
+            : 'all';
+
+        $listings = $request->user()
+            ->listings()
+            ->with(['category', 'negotiations.buyer'])
+            ->when($salesFilter === 'open', fn ($query) => $query->whereIn('status', [
+                ListingStatus::Active->value,
+                ListingStatus::Paused->value,
+            ]))
+            ->when($salesFilter === 'closed', fn ($query) => $query->where('status', ListingStatus::Sold->value))
+            ->latest()
+            ->get();
+
         return view('listings.mine', [
-            'listings' => $request->user()
-                ->listings()
-                ->with(['category', 'negotiations.buyer'])
-                ->latest()
-                ->get(),
+            'listings' => $listings,
+            'salesFilter' => $salesFilter,
         ]);
     }
 
