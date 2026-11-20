@@ -33,18 +33,21 @@
         @forelse ($listings as $l)
             <article class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
                 <div class="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:p-5">
-                    <div class="h-24 w-full shrink-0 overflow-hidden rounded-xl bg-gradient-to-br from-green-50 to-amber-50 sm:h-24 sm:w-32">
+                    <a href="{{ route('listings.show', $l) }}" aria-label="Ver anúncio: {{ $l->title }}"
+                        class="h-24 w-full shrink-0 overflow-hidden rounded-xl bg-gradient-to-br from-green-50 to-amber-50 focus:outline-none focus:ring-2 focus:ring-green-700 focus:ring-offset-2 sm:h-24 sm:w-32">
                         @if ($l->image_path)
                             <img src="{{ asset('storage/'.$l->image_path) }}" alt="{{ $l->title }}" loading="lazy" class="h-full w-full object-cover">
                         @else
                             <div class="flex h-full items-center justify-center text-green-800/40"><x-application-logo class="h-10 w-10" /></div>
                         @endif
-                    </div>
+                    </a>
 
                     <div class="min-w-0 flex-1">
                         <a href="{{ route('listings.show', $l) }}" class="block truncate text-lg font-semibold text-gray-900 hover:text-green-800 hover:underline">{{ $l->title }}</a>
                         <p class="mt-1 text-sm font-semibold text-green-900">R$ {{ number_format($l->price, 2, ',', '.') }} / {{ $l->unit }}</p>
-                        <p class="mt-1 text-sm text-gray-500">{{ $l->city }} - {{ $l->state }} · {{ $l->category->name }}</p>
+                        <p class="mt-1 text-sm text-gray-500">
+                            {{ $l->location_precision === 'exact' ? 'Posição exata marcada' : $l->city.' - '.$l->state }} · {{ $l->category->name }}
+                        </p>
                         <div class="mt-2 flex flex-wrap items-center gap-2">
                             <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold {{ $l->status->badgeClasses() }}">{{ $l->status->label() }}</span>
                             <span class="text-xs text-gray-500">{{ $l->negotiations->count() }} {{ $l->negotiations->count() === 1 ? 'negociação' : 'negociações' }}</span>
@@ -80,9 +83,9 @@
                     <form method="POST" action="{{ route('listings.status', $l) }}" class="border-t border-gray-100 bg-gray-50/70 p-4 sm:px-5">
                         @csrf @method('PATCH')
                         <input type="hidden" name="status" value="sold">
-                        <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
+                        <div class="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-end">
                             <div class="min-w-0 flex-1">
-                                <label for="buyer_id_{{ $l->id }}" class="mb-1 block text-sm font-semibold text-gray-800">Concluir venda</label>
+                                <label for="buyer_id_{{ $l->id }}" class="mb-1 block text-sm font-semibold text-gray-800">Comprador</label>
                                 <select id="buyer_id_{{ $l->id }}" name="buyer_id" required class="w-full rounded-lg border-gray-300 text-sm focus:border-green-700 focus:ring-green-700">
                                     <option value="" disabled selected>Selecione onde a venda aconteceu</option>
                                     @foreach ($l->negotiations as $n)
@@ -91,9 +94,33 @@
                                     <option value="outside">Venda fora do AgroOferta</option>
                                 </select>
                             </div>
-                            <button class="rounded-lg bg-green-800 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-green-900">Marcar como vendido</button>
+                            <fieldset>
+                                <legend class="mb-1 block text-sm font-semibold text-gray-800">Quantidade vendida</legend>
+                                <div class="flex flex-wrap gap-3">
+                                    <label class="flex items-center gap-2 text-sm text-gray-700">
+                                        <input type="radio" name="sale_type" value="all" checked class="border-gray-300 text-green-800 focus:ring-green-700">
+                                        Vendi tudo
+                                    </label>
+                                    @if ($l->quantity !== null)
+                                        <label class="flex items-center gap-2 text-sm text-gray-700">
+                                            <input type="radio" name="sale_type" value="quantity" class="border-gray-300 text-green-800 focus:ring-green-700">
+                                            Vendi
+                                        </label>
+                                        <input name="sold_quantity" type="number" min="0.01" max="{{ $l->quantity }}" step="0.01"
+                                            placeholder="{{ $l->quantity }} {{ $l->unit }}" aria-label="Quantidade vendida"
+                                            class="w-32 rounded-lg border-gray-300 text-sm focus:border-green-700 focus:ring-green-700">
+                                    @endif
+                                </div>
+                            </fieldset>
+                            <button class="rounded-lg bg-green-800 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-green-900">Registrar venda</button>
                         </div>
-                        <p class="mt-2 text-xs leading-5 text-gray-500">Escolha a negociação para liberar a avaliação entre vocês. Vendas feitas fora do AgroOferta não habilitam avaliações pela plataforma.</p>
+                        <p class="mt-2 text-xs leading-5 text-gray-500">Uma venda parcial reduz a quantidade disponível e mantém o anúncio ativo. Vender tudo encerra o anúncio. A avaliação é liberada apenas quando todo o anúncio é vendido para uma negociação.</p>
+                        @error('sale_type')
+                            <p class="mt-2 text-sm text-red-700">{{ $message }}</p>
+                        @enderror
+                        @error('sold_quantity')
+                            <p class="mt-2 text-sm text-red-700">{{ $message }}</p>
+                        @enderror
                     </form>
                 @elseif ($l->sold_to_id)
                     <div class="border-t border-gray-100 bg-green-50/60 px-4 py-3 text-sm text-gray-700 sm:px-5">

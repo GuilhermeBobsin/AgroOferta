@@ -87,6 +87,61 @@ class MarketplaceTest extends TestCase
             ->assertDontSee('Anúncio distante');
     }
 
+    public function test_home_displays_distance_when_the_user_has_a_location(): void
+    {
+        $user = User::factory()->create(['latitude' => 0, 'longitude' => 0]);
+        Listing::factory()->create(['title' => 'Adubo a onze quilômetros', 'latitude' => 0.1, 'longitude' => 0]);
+
+        $this->actingAs($user)->get('/')
+            ->assertOk()
+            ->assertSee('11 km');
+    }
+
+    public function test_product_photos_link_to_the_listing_page(): void
+    {
+        $listing = Listing::factory()->create(['title' => 'Adubo com foto']);
+
+        $this->get('/')
+            ->assertOk()
+            ->assertSee(route('listings.show', $listing), false);
+
+        $this->actingAs($listing->user)->get(route('listings.mine'))
+            ->assertOk()
+            ->assertSee(route('listings.show', $listing), false);
+    }
+
+    public function test_user_can_add_and_remove_another_users_listing_from_favorites(): void
+    {
+        $user = User::factory()->create();
+        $listing = Listing::factory()->create();
+
+        $this->actingAs($user)->post(route('favorites.store', $listing))
+            ->assertSessionHas('status', 'Anúncio salvo nos favoritos.');
+        $this->assertDatabaseHas('favorites', ['user_id' => $user->id, 'listing_id' => $listing->id]);
+
+        $this->actingAs($user)->get(route('favorites.index'))
+            ->assertOk()
+            ->assertSee($listing->title);
+
+        $this->actingAs($user)->delete(route('favorites.destroy', $listing))
+            ->assertSessionHas('status', 'Anúncio removido dos favoritos.');
+        $this->assertDatabaseMissing('favorites', ['user_id' => $user->id, 'listing_id' => $listing->id]);
+    }
+
+    public function test_favorite_control_is_available_on_listing_page_but_not_on_home_cards(): void
+    {
+        $user = User::factory()->create();
+        $listing = Listing::factory()->create();
+
+        $this->actingAs($user)->get('/')
+            ->assertOk()
+            ->assertDontSee('Salvar nos favoritos');
+
+        $this->actingAs($user)->get(route('listings.show', $listing))
+            ->assertOk()
+            ->assertSee('Salvar nos favoritos');
+    }
+
     public function test_distance_filter_keeps_the_price_order_selected_by_the_user(): void
     {
         $user = User::factory()->create(['latitude' => 0, 'longitude' => 0]);
@@ -107,6 +162,37 @@ class MarketplaceTest extends TestCase
             ->assertOk()
             ->assertSee('Semente local')
             ->assertDontSee('Semente distante');
+    }
+
+    public function test_exact_location_does_not_display_the_manual_city_publicly(): void
+    {
+        Listing::factory()->create([
+            'city' => 'Salvador',
+            'state' => 'BA',
+            'latitude' => -23.5505,
+            'longitude' => -46.6333,
+            'location_precision' => 'exact',
+        ]);
+
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('Posição exata marcada')
+            ->assertDontSee('Salvador - BA');
+    }
+
+    public function test_my_listings_marks_an_exact_location_without_showing_its_manual_city(): void
+    {
+        $user = User::factory()->create();
+        Listing::factory()->for($user)->create([
+            'city' => 'Salvador',
+            'state' => 'BA',
+            'location_precision' => 'exact',
+        ]);
+
+        $this->actingAs($user)->get(route('listings.mine'))
+            ->assertOk()
+            ->assertSee('Posição exata marcada')
+            ->assertDontSee('Salvador - BA');
     }
 
     public function test_guest_cannot_create_listing(): void
@@ -305,7 +391,7 @@ class MarketplaceTest extends TestCase
 
         $this->actingAs($buyer)->post(route('reviews.store', $negotiation), ['rating' => 5])->assertForbidden();
 
-        $this->actingAs($seller)->patch(route('listings.status', $listing), ['status' => 'sold', 'buyer_id' => $buyer->id])
+        $this->actingAs($seller)->patch(route('listings.status', $listing), ['status' => 'sold', 'buyer_id' => $buyer->id, 'sale_type' => 'all'])
             ->assertSessionHasNoErrors();
 
         $this->actingAs($buyer)->post(route('reviews.store', $negotiation), ['rating' => 5, 'comment' => 'Ótimo'])->assertRedirect();
@@ -323,7 +409,7 @@ class MarketplaceTest extends TestCase
         $other = User::factory()->create();
         $otherNegotiation = Negotiation::create(['listing_id' => $listing->id, 'buyer_id' => $other->id, 'seller_id' => $seller->id]);
 
-        $this->actingAs($seller)->patch(route('listings.status', $listing), ['status' => 'sold', 'buyer_id' => $buyer->id]);
+        $this->actingAs($seller)->patch(route('listings.status', $listing), ['status' => 'sold', 'buyer_id' => $buyer->id, 'sale_type' => 'all']);
 
         $this->actingAs($other)->post(route('reviews.store', $otherNegotiation), ['rating' => 1])->assertForbidden();
     }
@@ -333,7 +419,7 @@ class MarketplaceTest extends TestCase
         [$seller, , $listing] = $this->dealSetup();
         $stranger = User::factory()->create();
 
-        $this->actingAs($seller)->patch(route('listings.status', $listing), ['status' => 'sold', 'buyer_id' => $stranger->id])
+        $this->actingAs($seller)->patch(route('listings.status', $listing), ['status' => 'sold', 'buyer_id' => $stranger->id, 'sale_type' => 'all'])
             ->assertSessionHasErrors('buyer_id');
 
         $this->assertSame(ListingStatus::Active, $listing->fresh()->status);
@@ -343,9 +429,39 @@ class MarketplaceTest extends TestCase
     {
         [$seller, $buyer, $listing] = $this->dealSetup();
 
-        $this->actingAs($seller)->patch(route('listings.status', $listing), ['status' => 'sold', 'buyer_id' => $buyer->id]);
+        $this->actingAs($seller)->patch(route('listings.status', $listing), ['status' => 'sold', 'buyer_id' => $buyer->id, 'sale_type' => 'all']);
         $this->actingAs($seller)->patch(route('listings.status', $listing), ['status' => 'active']);
 
         $this->assertNull($listing->fresh()->sold_to_id);
+    }
+
+    public function test_partial_sale_reduces_available_quantity_and_keeps_listing_active(): void
+    {
+        [$seller, $buyer, $listing] = $this->dealSetup();
+        $listing->update(['quantity' => 100]);
+
+        $this->actingAs($seller)->patch(route('listings.status', $listing), [
+            'status' => 'sold',
+            'buyer_id' => $buyer->id,
+            'sale_type' => 'quantity',
+            'sold_quantity' => 25,
+        ])->assertSessionHasNoErrors();
+
+        $this->assertSame(ListingStatus::Active, $listing->fresh()->status);
+        $this->assertEquals(75, (float) $listing->fresh()->quantity);
+        $this->assertNull($listing->fresh()->sold_to_id);
+    }
+
+    public function test_partial_sale_requires_an_available_quantity(): void
+    {
+        [$seller, $buyer, $listing] = $this->dealSetup();
+        $listing->update(['quantity' => null]);
+
+        $this->actingAs($seller)->patch(route('listings.status', $listing), [
+            'status' => 'sold',
+            'buyer_id' => $buyer->id,
+            'sale_type' => 'quantity',
+            'sold_quantity' => 1,
+        ])->assertSessionHasErrors('sold_quantity');
     }
 }

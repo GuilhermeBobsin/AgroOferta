@@ -10,6 +10,7 @@
                     @auth
                         <a href="{{ route('dashboard') }}" @class(['text-green-800 font-semibold' => request()->routeIs('dashboard'), 'hover:text-green-700' => ! request()->routeIs('dashboard')])>Painel</a>
                         <a href="{{ route('listings.mine') }}" @class(['text-green-800 font-semibold' => request()->routeIs('listings.mine'), 'hover:text-green-700' => ! request()->routeIs('listings.mine')])>Meus anúncios</a>
+                        <a href="{{ route('favorites.index') }}" @class(['text-green-800 font-semibold' => request()->routeIs('favorites.*'), 'hover:text-green-700' => ! request()->routeIs('favorites.*')])>Favoritos</a>
                         <a href="{{ route('negotiations.index') }}" @class(['text-green-800 font-semibold' => request()->routeIs('negotiations.*'), 'hover:text-green-700' => ! request()->routeIs('negotiations.*')])>Negociações</a>
                     @endauth
                 </div>
@@ -56,6 +57,7 @@
             @auth
                 <a href="{{ route('dashboard') }}" class="block py-2">Painel</a>
                 <a href="{{ route('listings.mine') }}" class="block py-2">Meus anúncios</a>
+                <a href="{{ route('favorites.index') }}" class="block py-2">Favoritos</a>
                 <a href="{{ route('negotiations.index') }}" class="block py-2">Negociações</a>
                 <a href="{{ route('listings.create') }}" class="block py-2">Anunciar</a>
                 <a href="{{ route('account.edit') }}" class="block py-2">Meu contato</a>

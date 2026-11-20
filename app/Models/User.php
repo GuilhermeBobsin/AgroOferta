@@ -59,6 +59,11 @@ class User extends Authenticatable
         return $this->hasMany(Listing::class);
     }
 
+    public function favoriteListings()
+    {
+        return $this->belongsToMany(Listing::class, 'favorites')->withTimestamps();
+    }
+
     public function reviewsReceived()
     {
         return $this->hasMany(Review::class, 'reviewed_id');

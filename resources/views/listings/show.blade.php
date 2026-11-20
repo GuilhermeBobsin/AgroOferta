@@ -45,7 +45,11 @@
 
                 <div class="mt-5 border-t border-gray-100 pt-4">
                     <h2 class="text-sm font-semibold text-gray-900">Localização</h2>
-                    <p class="mt-1 text-sm text-gray-600">{{ $listing->city }} - {{ $listing->state }}</p>
+                    @if ($listing->location_precision === 'exact')
+                        <p class="mt-1 text-sm text-gray-600">Posição exata marcada para o cálculo de distância.</p>
+                    @else
+                        <p class="mt-1 text-sm text-gray-600">{{ $listing->city }} - {{ $listing->state }}</p>
+                    @endif
                     <p class="mt-1 text-xs text-gray-400">Endereço exato combinado diretamente entre as partes.</p>
                 </div>
 
@@ -68,13 +72,23 @@
                         <a href="{{ route('listings.mine') }}" class="rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50">Meus anúncios</a>
                     </div>
                 @elseif ($listing->status === \App\Enums\ListingStatus::Active)
+                    @auth
+                        <form method="POST" action="{{ $isFavorite ? route('favorites.destroy', $listing) : route('favorites.store', $listing) }}" class="mt-6">
+                            @csrf
+                            @if ($isFavorite) @method('DELETE') @endif
+                            <button class="w-full rounded-lg border border-green-700 px-4 py-3 text-sm font-semibold text-green-900 transition hover:bg-green-50">
+                                {{ $isFavorite ? 'Remover dos favoritos' : 'Salvar nos favoritos' }}
+                            </button>
+                        </form>
+                    @endauth
+
                     @guest
                         <a href="{{ route('login') }}" class="mt-6 block rounded-lg bg-green-800 px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-green-900">Entre para negociar com o vendedor</a>
                         <p class="mt-2 text-center text-xs text-gray-500">Ainda não tem conta? <a class="font-medium text-green-800 underline" href="{{ route('register') }}">Cadastre-se</a>.</p>
                     @endguest
 
                     @can('negotiate', $listing)
-                        <div class="mt-6 space-y-2">
+                        <div class="mt-2 space-y-2">
                             <form method="POST" action="{{ route('negotiations.store', $listing) }}">
                                 @csrf
                                 <button class="w-full rounded-lg bg-green-800 px-4 py-3 text-sm font-semibold text-white transition hover:bg-green-900">Iniciar negociação</button>

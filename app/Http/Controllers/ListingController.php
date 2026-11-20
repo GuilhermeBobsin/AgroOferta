@@ -36,18 +36,22 @@ class ListingController extends Controller
             ->when(is_numeric($request->price_min), fn ($q) => $q->where('price', '>=', $request->price_min))
             ->when(is_numeric($request->price_max), fn ($q) => $q->where('price', '<=', $request->price_max));
 
-        if (($filters['distance_km'] ?? null) !== null && $canSortByDistance) {
+        $hasDistanceFilter = ($filters['distance_km'] ?? null) !== null;
+
+        if ($hasDistanceFilter && $canSortByDistance) {
             $query->nearby(
                 $origin[0],
                 $origin[1],
                 (float) $filters['distance_km'],
             );
+        } elseif ($canSortByDistance && $sort !== 'nearest') {
+            $query->withDistance($origin[0], $origin[1]);
         }
 
         match (true) {
             $sort === 'price_asc' => $query->orderBy('price'),
             $sort === 'price_desc' => $query->orderByDesc('price'),
-            $sort === 'nearest' && $canSortByDistance && ($filters['distance_km'] ?? null) !== null => $query->orderBy('distance'),
+            $sort === 'nearest' && $canSortByDistance && $hasDistanceFilter => $query->orderBy('distance'),
             $sort === 'nearest' && $canSortByDistance => $query->orderByDistance($origin[0], $origin[1]),
             default => $query->latest(),
         };
@@ -72,8 +76,11 @@ class ListingController extends Controller
             ->take(5)
             ->get();
         $isOwner = $request->user()?->id === $listing->user_id;
+        $isFavorite = $request->user()
+            ? $request->user()->favoriteListings()->whereKey($listing->id)->exists()
+            : false;
 
-        return view('listings.show', compact('listing', 'seller', 'reviews', 'isOwner'));
+        return view('listings.show', compact('listing', 'seller', 'reviews', 'isOwner', 'isFavorite'));
     }
 
     public function mine(Request $request)
@@ -211,17 +218,36 @@ class ListingController extends Controller
         Gate::authorize('update', $listing);
 
         $status = ListingStatus::from($request->validated('status'));
-        $buyerId = $request->validated('buyer_id');
 
+        if ($status !== ListingStatus::Sold) {
+            $listing->update(['status' => $status, 'sold_to_id' => null]);
+
+            return back()->with('status', 'Status atualizado.');
+        }
+
+        $data = $request->validated();
+        $buyerId = $data['buyer_id'] === 'outside' ? null : $data['buyer_id'];
+
+        if ($data['sale_type'] === 'all') {
+            $listing->update([
+                'status' => ListingStatus::Sold,
+                'sold_to_id' => $buyerId,
+                'quantity' => $listing->quantity === null ? null : 0,
+            ]);
+
+            return back()->with('status', 'Venda total registrada. Anúncio encerrado.');
+        }
+
+        $remainingQuantity = (float) $listing->quantity - (float) $data['sold_quantity'];
         $listing->update([
-            'status' => $status,
-            'sold_to_id' => $status === ListingStatus::Sold
-                && $buyerId !== 'outside'
-                ? $buyerId
-                : null,
+            'quantity' => $remainingQuantity,
+            'status' => $remainingQuantity <= 0 ? ListingStatus::Sold : ListingStatus::Active,
+            'sold_to_id' => $remainingQuantity <= 0 ? $buyerId : null,
         ]);
 
-        return back()->with('status', 'Status atualizado.');
+        return back()->with('status', $remainingQuantity <= 0
+            ? 'Venda registrada. Todo o estoque foi vendido e o anúncio foi encerrado.'
+            : 'Venda parcial registrada. O anúncio continua disponível com o saldo atualizado.');
     }
 
     public function destroy(Listing $listing)
