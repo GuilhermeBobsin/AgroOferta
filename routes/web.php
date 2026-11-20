@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\FavoriteController;
 use App\Http\Controllers\ListingController;
 use App\Http\Controllers\NegotiationController;
 use App\Http\Controllers\ProfileController;
@@ -19,6 +20,9 @@ Route::middleware('auth')->group(function () {
     Route::put('/anuncios/{listing}', [ListingController::class, 'update'])->middleware('throttle:30,1')->name('listings.update');
     Route::patch('/anuncios/{listing}/status', [ListingController::class, 'updateStatus'])->name('listings.status');
     Route::delete('/anuncios/{listing}', [ListingController::class, 'destroy'])->name('listings.destroy');
+    Route::get('/favoritos', [FavoriteController::class, 'index'])->name('favorites.index');
+    Route::post('/anuncios/{listing}/favorito', [FavoriteController::class, 'store'])->name('favorites.store');
+    Route::delete('/anuncios/{listing}/favorito', [FavoriteController::class, 'destroy'])->name('favorites.destroy');
 
     // Negociações e avaliações
     Route::get('/negociacoes', [NegotiationController::class, 'index'])->name('negotiations.index');

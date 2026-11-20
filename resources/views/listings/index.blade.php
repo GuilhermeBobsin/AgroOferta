@@ -184,9 +184,9 @@
 
             <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 @forelse ($listings as $l)
-                    <a href="{{ route('listings.show', $l) }}"
-                        class="group overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-green-700 focus:ring-offset-2">
-                        <div class="relative h-48 overflow-hidden bg-gradient-to-br from-green-50 to-amber-50">
+                    <article class="group overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg">
+                        <a href="{{ route('listings.show', $l) }}" aria-label="Ver anúncio: {{ $l->title }}"
+                            class="relative block h-48 overflow-hidden bg-gradient-to-br from-green-50 to-amber-50 focus:outline-none focus:ring-2 focus:ring-green-700 focus:ring-inset">
                             @if ($l->image_path)
                                 <img src="{{ asset('storage/'.$l->image_path) }}" alt="{{ $l->title }}"
                                     loading="lazy"
@@ -200,9 +200,10 @@
                             <span class="absolute left-3 top-3 rounded-full bg-white/95 px-3 py-1 text-xs font-semibold text-green-900 shadow-sm">
                                 {{ $l->category->name }}
                             </span>
-                        </div>
+                        </a>
 
-                        <div class="p-4">
+                        <a href="{{ route('listings.show', $l) }}" class="block focus:outline-none focus:ring-2 focus:ring-green-700 focus:ring-inset">
+                            <div class="p-4">
                             <h3 class="truncate font-semibold text-gray-900 group-hover:text-green-800">
                                 {{ $l->title }}
                             </h3>
@@ -220,7 +221,11 @@
                             @endif
 
                             <div class="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs text-gray-500">
-                                <span class="truncate">{{ $l->city }} - {{ $l->state }}</span>
+                                @if ($l->location_precision === 'exact')
+                                    <span class="truncate">Posição exata marcada</span>
+                                @else
+                                    <span class="truncate">{{ $l->city }} - {{ $l->state }}</span>
+                                @endif
 
                                 @if (isset($l->distance))
                                     <span class="ms-2 shrink-0 font-medium text-green-800">
@@ -232,8 +237,9 @@
                             <p class="mt-2 truncate text-xs text-gray-400">
                                 Anunciado por {{ $l->user->name }}
                             </p>
-                        </div>
-                    </a>
+                            </div>
+                        </a>
+                    </article>
                 @empty
                     <div class="col-span-full rounded-2xl border border-dashed border-gray-300 bg-white px-6 py-12 text-center">
                         <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-green-50 text-green-800">

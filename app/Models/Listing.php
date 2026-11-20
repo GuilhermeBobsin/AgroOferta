@@ -63,6 +63,11 @@ class Listing extends Model
         return $this->hasMany(Negotiation::class);
     }
 
+    public function favoritedBy()
+    {
+        return $this->belongsToMany(User::class, 'favorites')->withTimestamps();
+    }
+
     public function whatsappUrl(): ?string
     {
         return $this->user->whatsappUrl('Olá! Vi seu anúncio "'.$this->title.'" no AgroOferta.');
@@ -71,6 +76,15 @@ class Listing extends Model
     public function scopeActive(Builder $q): Builder
     {
         return $q->where('status', ListingStatus::Active->value);
+    }
+
+    /** Inclui a distância em km, sem restringir nem alterar a ordem da busca. */
+    public function scopeWithDistance(Builder $q, float $lat, float $lng): Builder
+    {
+        $haversine = self::haversineFor($q);
+
+        return $q->select('listings.*')
+            ->selectRaw($haversine.' as distance', [$lat, $lng, $lat]);
     }
 
     /** Só anúncios dentro do raio (km), preservando a ordenação escolhida. */

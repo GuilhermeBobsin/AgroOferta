@@ -26,6 +26,33 @@ class ListingStatusRequest extends FormRequest
                     ['nullable', Rule::exists('negotiations', 'buyer_id')->where('listing_id', $this->route('listing')->id)],
                 ),
             ],
+            'sale_type' => [
+                Rule::requiredIf($this->input('status') === ListingStatus::Sold->value),
+                'nullable',
+                Rule::in(['all', 'quantity']),
+            ],
+            'sold_quantity' => [
+                Rule::requiredIf(
+                    $this->input('status') === ListingStatus::Sold->value
+                    && $this->input('sale_type') === 'quantity'
+                ),
+                'nullable',
+                'numeric',
+                'gt:0',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    $listing = $this->route('listing');
+
+                    if ($this->input('sale_type') !== 'quantity') {
+                        return;
+                    }
+
+                    if ($listing->quantity === null) {
+                        $fail('Informe a quantidade disponível no anúncio antes de registrar uma venda parcial.');
+                    } elseif ((float) $value > (float) $listing->quantity) {
+                        $fail('A quantidade vendida não pode ser maior que a disponível.');
+                    }
+                },
+            ],
         ];
     }
 }
