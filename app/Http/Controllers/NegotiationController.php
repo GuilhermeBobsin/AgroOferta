@@ -54,4 +54,25 @@ class NegotiationController extends Controller
 
         return back();
     }
+
+    public function messages(Request $request, Negotiation $negotiation)
+    {
+        Gate::authorize('view', $negotiation);
+
+        $afterId = max(0, (int) $request->integer('after'));
+        $userId = $request->user()->id;
+        $messages = $negotiation->messages()
+            ->with('user:id,name')
+            ->where('id', '>', $afterId)
+            ->get()
+            ->map(fn ($message) => [
+                'id' => $message->id,
+                'body' => $message->body,
+                'author' => $message->user_id === $userId ? 'Você' : $message->user->name,
+                'is_mine' => $message->user_id === $userId,
+                'created_at' => $message->created_at->format('d/m H:i'),
+            ]);
+
+        return response()->json(['messages' => $messages]);
+    }
 }

@@ -383,6 +383,19 @@ class MarketplaceTest extends TestCase
         $this->actingAs($seller)->get(route('negotiations.show', $negotiation))->assertSee('Faz por 140?');
     }
 
+    public function test_participant_can_fetch_only_new_messages_for_live_updates(): void
+    {
+        [$seller, $buyer, , $negotiation] = $this->dealSetup();
+        $first = $negotiation->messages()->create(['user_id' => $buyer->id, 'body' => 'Mensagem antiga']);
+        $second = $negotiation->messages()->create(['user_id' => $buyer->id, 'body' => 'Mensagem nova']);
+
+        $this->actingAs($seller)->get(route('negotiations.messages', $negotiation, false).'?after='.$first->id)
+            ->assertOk()
+            ->assertJsonPath('messages.0.id', $second->id)
+            ->assertJsonPath('messages.0.body', 'Mensagem nova')
+            ->assertJsonCount(1, 'messages');
+    }
+
     // ---------- Venda e avaliações ----------
 
     public function test_review_is_blocked_until_listing_is_sold_to_that_buyer(): void

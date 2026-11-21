@@ -26,17 +26,18 @@
         @endif
 
         <section aria-label="Mensagens da negociação" class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
-            <div class="max-h-[32rem] min-h-64 space-y-3 overflow-y-auto rounded-xl bg-gray-50 p-3 sm:p-4" aria-live="polite">
+            <div id="messages" data-messages-url="{{ route('negotiations.messages', $negotiation) }}"
+                class="max-h-[32rem] min-h-64 space-y-3 overflow-y-auto rounded-xl bg-gray-50 p-3 sm:p-4" aria-live="polite">
                 @forelse ($negotiation->messages as $m)
                     @php $isMine = $m->user_id === auth()->id(); @endphp
-                    <div class="flex {{ $isMine ? 'justify-end' : 'justify-start' }}">
+                    <div data-message-id="{{ $m->id }}" class="flex {{ $isMine ? 'justify-end' : 'justify-start' }}">
                         <article class="max-w-[88%] rounded-2xl px-4 py-3 text-sm shadow-sm sm:max-w-[78%] {{ $isMine ? 'rounded-br-md bg-green-800 text-white' : 'rounded-bl-md bg-white text-gray-800 ring-1 ring-gray-200' }}">
                             <p class="mb-1 text-xs {{ $isMine ? 'text-green-100' : 'text-gray-500' }}">{{ $isMine ? 'Você' : $m->user->name }} · {{ $m->created_at->format('d/m H:i') }}</p>
                             <p class="whitespace-pre-line break-words leading-6">{{ $m->body }}</p>
                         </article>
                     </div>
                 @empty
-                    <div class="flex min-h-56 flex-col items-center justify-center px-4 text-center">
+                    <div data-empty-messages class="flex min-h-56 flex-col items-center justify-center px-4 text-center">
                         <div class="flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-green-900"><x-application-logo class="h-7 w-7" /></div>
                         <p class="mt-3 font-semibold text-gray-900">Comece a conversa</p>
                         <p class="mt-1 max-w-sm text-sm leading-5 text-gray-500">Pergunte sobre quantidade, conservação e retirada. Se fizer uma proposta, informe o valor e a unidade.</p>
@@ -95,4 +96,71 @@
             @endif
         </section>
     </div>
+
+    <script>
+        (() => {
+            const container = document.getElementById('messages');
+            if (!container) return;
+
+            const lastMessage = container.querySelector('[data-message-id]:last-child');
+            let lastId = Number(lastMessage?.dataset.messageId ?? 0);
+            let isFetching = false;
+
+            const messageElement = (message) => {
+                const wrapper = document.createElement('div');
+                wrapper.dataset.messageId = message.id;
+                wrapper.className = `flex ${message.is_mine ? 'justify-end' : 'justify-start'}`;
+
+                const card = document.createElement('article');
+                card.className = `max-w-[88%] rounded-2xl px-4 py-3 text-sm shadow-sm sm:max-w-[78%] ${message.is_mine
+                    ? 'rounded-br-md bg-green-800 text-white'
+                    : 'rounded-bl-md bg-white text-gray-800 ring-1 ring-gray-200'}`;
+
+                const meta = document.createElement('p');
+                meta.className = `mb-1 text-xs ${message.is_mine ? 'text-green-100' : 'text-gray-500'}`;
+                meta.textContent = `${message.author} · ${message.created_at}`;
+
+                const body = document.createElement('p');
+                body.className = 'whitespace-pre-line break-words leading-6';
+                body.textContent = message.body;
+
+                card.append(meta, body);
+                wrapper.append(card);
+                return wrapper;
+            };
+
+            const loadNewMessages = async () => {
+                if (isFetching || document.hidden) return;
+                isFetching = true;
+
+                try {
+                    const response = await fetch(`${container.dataset.messagesUrl}?after=${lastId}`, {
+                        headers: { Accept: 'application/json' },
+                        credentials: 'same-origin',
+                    });
+                    if (!response.ok) return;
+
+                    const { messages } = await response.json();
+                    if (!messages.length) return;
+
+                    container.querySelector('[data-empty-messages]')?.remove();
+                    const wasNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 80;
+                    messages.forEach((message) => container.append(messageElement(message)));
+                    lastId = messages.at(-1).id;
+
+                    if (wasNearBottom) container.scrollTop = container.scrollHeight;
+                } catch (_) {
+                    // Uma falha de rede é temporária; a próxima consulta tentará novamente.
+                } finally {
+                    isFetching = false;
+                }
+            };
+
+            container.scrollTop = container.scrollHeight;
+            window.setInterval(loadNewMessages, 7000);
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden) loadNewMessages();
+            });
+        })();
+    </script>
 </x-app-layout>
