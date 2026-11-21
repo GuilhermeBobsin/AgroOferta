@@ -27,6 +27,7 @@ Route::middleware('auth')->group(function () {
     // Negociações e avaliações
     Route::get('/negociacoes', [NegotiationController::class, 'index'])->name('negotiations.index');
     Route::post('/anuncios/{listing}/negociar', [NegotiationController::class, 'store'])->middleware('throttle:20,1')->name('negotiations.store');
+    Route::get('/negociacoes/{negotiation}/mensagens', [NegotiationController::class, 'messages'])->middleware('throttle:30,1')->name('negotiations.messages');
     Route::get('/negociacoes/{negotiation}', [NegotiationController::class, 'show'])->name('negotiations.show');
     Route::post('/negociacoes/{negotiation}/mensagens', [NegotiationController::class, 'message'])->middleware('throttle:20,1')->name('negotiations.message');
     Route::post('/negociacoes/{negotiation}/avaliar', [ReviewController::class, 'store'])->middleware('throttle:10,1')->name('reviews.store');
