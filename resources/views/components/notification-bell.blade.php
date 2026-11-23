@@ -1,8 +1,8 @@
 @php $unreadCount = auth()->user()->messageNotifications()->whereNull('read_at')->count(); @endphp
 
 <div class="relative" x-data="notifications(@js(route('notifications.feed', [], false)), @js(route('notifications.read-all', [], false)), {{ $unreadCount }})"
-    @click.outside="open = false" @keydown.escape.stop.prevent="open = false; $refs.trigger.focus()">
-    <button type="button" x-ref="trigger" @click="toggle()" :aria-expanded="open.toString()"
+    @click.outside="notificationsOpen = false" @keydown.escape.stop.prevent="notificationsOpen = false; $refs.trigger.focus()">
+    <button type="button" x-ref="trigger" @click="toggle()" :aria-expanded="notificationsOpen.toString()"
         aria-controls="notification-panel" :aria-label="unreadCount ? `Notificações: ${unreadCount} não lidas` : 'Notificações'"
         class="relative flex h-10 w-10 items-center justify-center rounded-full text-gray-600 hover:bg-green-50 hover:text-green-800 focus:outline-none focus:ring-2 focus:ring-green-700">
         <svg aria-hidden="true" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7">
@@ -13,7 +13,7 @@
     </button>
     <span class="sr-only" role="status" x-text="unreadCount ? `${unreadCount} notificações não lidas` : 'Nenhuma notificação não lida'"></span>
 
-    <section id="notification-panel" x-cloak x-show="open" x-transition.origin.top.right aria-labelledby="notification-title"
+    <section id="notification-panel" x-cloak x-show="notificationsOpen" x-transition.origin.top.right aria-labelledby="notification-title"
         class="fixed left-4 right-4 top-16 z-50 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl sm:absolute sm:left-auto sm:right-0 sm:top-12 sm:w-96">
         <div class="flex items-center justify-between gap-2 border-b border-gray-100 px-4 py-4">
             <h2 id="notification-title" class="font-bold text-gray-900">Notificações</h2>

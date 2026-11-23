@@ -1,5 +1,5 @@
 export default (feedUrl, readAllUrl, initialCount) => ({
-    open: false,
+    notificationsOpen: false,
     unreadCount: initialCount,
     notifications: [],
     loaded: false,
@@ -35,8 +35,8 @@ export default (feedUrl, readAllUrl, initialCount) => ({
     },
 
     toggle() {
-        this.open = !this.open;
-        if (this.open) this.load(true);
+        this.notificationsOpen = !this.notificationsOpen;
+        if (this.notificationsOpen) this.load(true);
     },
 
     async load(force = false) {
@@ -50,7 +50,7 @@ export default (feedUrl, readAllUrl, initialCount) => ({
 
         try {
             const response = await window.axios.get(feedUrl, {
-                params: { summary: this.open ? 0 : 1 },
+                params: { summary: this.notificationsOpen ? 0 : 1 },
                 timeout: 8000,
             });
             if (typeof response.data?.unread_count !== 'number') throw new Error('Invalid notification response');

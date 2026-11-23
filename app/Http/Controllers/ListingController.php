@@ -8,6 +8,7 @@ use App\Http\Requests\ListingRequest;
 use App\Http\Requests\ListingStatusRequest;
 use App\Models\Category;
 use App\Models\Listing;
+use App\Services\ReputationService;
 use App\Support\BrazilLocation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -63,18 +64,13 @@ class ListingController extends Controller
         ]);
     }
 
-    public function show(Request $request, Listing $listing)
+    public function show(Request $request, Listing $listing, ReputationService $reputation)
     {
         Gate::authorize('view', $listing);
 
         $listing->load(['category', 'user']);
-        $seller = $listing->user->loadCount('reviewsReceived')
-            ->loadAvg('reviewsReceived', 'rating');
-        $reviews = $seller->reviewsReceived()
-            ->with('reviewer')
-            ->latest()
-            ->take(5)
-            ->get();
+        $seller = $reputation->loadSummary($listing->user);
+        $reviews = $reputation->latestReviews($seller);
         $isOwner = $request->user()?->id === $listing->user_id;
         $isFavorite = $request->user()
             ? $request->user()->favoriteListings()->whereKey($listing->id)->exists()

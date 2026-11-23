@@ -55,14 +55,14 @@
 
                 <div class="mt-5 border-t border-gray-100 pt-4">
                     <h2 class="text-sm font-semibold text-gray-900">Anunciado por</h2>
-                    <p class="mt-1 text-sm text-gray-700">{{ $seller->name }}</p>
+                    <a href="{{ route('profiles.show', $seller) }}" class="mt-1 inline-block text-sm font-medium text-green-800 hover:underline">{{ $seller->name }}</a>
                     @if ($seller->reviews_received_count)
                         <p class="mt-1 text-sm text-amber-700">
-                            <span aria-label="Nota média">★ {{ number_format($seller->reviews_received_avg_rating, 1, ',', '') }}</span>
+                            <span aria-label="Nota média">★ {{ number_format((float) $seller->reputacao_nota, 1, ',', '') }}</span>
                             <span class="text-gray-500">({{ $seller->reviews_received_count }} {{ $seller->reviews_received_count === 1 ? 'avaliação' : 'avaliações' }})</span>
                         </p>
                     @else
-                        <p class="mt-1 text-sm text-gray-500">Ainda sem avaliações</p>
+                        <p class="mt-1 text-sm text-gray-500">Sem avaliações</p>
                     @endif
                 </div>
 
