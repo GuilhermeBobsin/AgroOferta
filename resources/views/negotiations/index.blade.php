@@ -29,6 +29,9 @@
                             <p class="mt-1 text-sm text-gray-600">{{ $isBuyer ? 'Vendedor' : 'Comprador' }}: {{ $other->name }}</p>
                             <p class="mt-1 text-sm font-medium text-green-900">R$ {{ number_format($n->listing->price, 2, ',', '.') }} / {{ $n->listing->unit }}</p>
                             <div class="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                                @if ($unread = $unreadCounts->get($n->id, 0))
+                                    <span class="rounded-full bg-green-800 px-2.5 py-1 font-semibold text-white">{{ $unread }} {{ $unread === 1 ? 'mensagem não lida' : 'mensagens não lidas' }}</span>
+                                @endif
                                 <span class="rounded-full px-2.5 py-1 font-semibold {{ $n->listing->status->badgeClasses() }}">Anúncio {{ strtolower($n->listing->status->label()) }}</span>
                                 @if ($n->isClosedWithBuyer())
                                     <span class="rounded-full bg-green-100 px-2.5 py-1 font-semibold text-green-900">Venda confirmada entre vocês</span>

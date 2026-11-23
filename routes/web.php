@@ -5,6 +5,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FavoriteController;
 use App\Http\Controllers\ListingController;
 use App\Http\Controllers\NegotiationController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReviewController;
 use Illuminate\Support\Facades\Route;
@@ -28,9 +29,15 @@ Route::middleware('auth')->group(function () {
     Route::get('/negociacoes', [NegotiationController::class, 'index'])->name('negotiations.index');
     Route::post('/anuncios/{listing}/negociar', [NegotiationController::class, 'store'])->middleware('throttle:20,1')->name('negotiations.store');
     Route::get('/negociacoes/{negotiation}/mensagens', [NegotiationController::class, 'messages'])->middleware('throttle:30,1')->name('negotiations.messages');
+    Route::patch('/negociacoes/{negotiation}/mensagens/lidas', [NegotiationController::class, 'readMessages'])->middleware('throttle:30,1')->name('negotiations.read');
     Route::get('/negociacoes/{negotiation}', [NegotiationController::class, 'show'])->name('negotiations.show');
     Route::post('/negociacoes/{negotiation}/mensagens', [NegotiationController::class, 'message'])->middleware('throttle:20,1')->name('negotiations.message');
     Route::post('/negociacoes/{negotiation}/avaliar', [ReviewController::class, 'store'])->middleware('throttle:10,1')->name('reviews.store');
+
+    // Notificações privadas de mensagens
+    Route::get('/notificacoes', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::get('/notificacoes/atualizacoes', [NotificationController::class, 'feed'])->middleware('throttle:60,1,notifications-feed:')->name('notifications.feed');
+    Route::patch('/notificacoes/lidas', [NotificationController::class, 'readAll'])->name('notifications.read-all');
 
     // Contato / localização
     Route::get('/meu-contato', [AccountController::class, 'edit'])->name('account.edit');

@@ -27,6 +27,7 @@
 
         <section aria-label="Mensagens da negociação" class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
             <div id="messages" data-messages-url="{{ route('negotiations.messages', $negotiation) }}"
+                data-read-url="{{ route('negotiations.read', $negotiation) }}"
                 class="max-h-[32rem] min-h-64 space-y-3 overflow-y-auto rounded-xl bg-gray-50 p-3 sm:p-4" aria-live="polite">
                 @forelse ($negotiation->messages as $m)
                     @php $isMine = $m->user_id === auth()->id(); @endphp
@@ -104,6 +105,7 @@
 
             const lastMessage = container.querySelector('[data-message-id]:last-child');
             let lastId = Number(lastMessage?.dataset.messageId ?? 0);
+            let lastReadId = lastId;
             let isFetching = false;
 
             const messageElement = (message) => {
@@ -141,14 +143,33 @@
                     if (!response.ok) return;
 
                     const { messages } = await response.json();
-                    if (!messages.length) return;
+                    if (document.hidden) return;
 
-                    container.querySelector('[data-empty-messages]')?.remove();
-                    const wasNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 80;
-                    messages.forEach((message) => container.append(messageElement(message)));
-                    lastId = messages.at(-1).id;
+                    if (messages.length) {
+                        container.querySelector('[data-empty-messages]')?.remove();
+                        const wasNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 80;
+                        messages.forEach((message) => container.append(messageElement(message)));
+                        lastId = Math.max(lastId, ...messages.map((message) => message.id));
 
-                    if (wasNearBottom) container.scrollTop = container.scrollHeight;
+                        if (wasNearBottom) container.scrollTop = container.scrollHeight;
+                    }
+
+                    if (lastId > lastReadId && !document.hidden) {
+                        const readResponse = await fetch(container.dataset.readUrl, {
+                            method: 'PATCH',
+                            headers: {
+                                Accept: 'application/json',
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            },
+                            credentials: 'same-origin',
+                            body: JSON.stringify({ through_id: lastId }),
+                        });
+                        if (readResponse.ok) {
+                            lastReadId = lastId;
+                            window.dispatchEvent(new Event('notifications-updated'));
+                        }
+                    }
                 } catch (_) {
                     // Uma falha de rede é temporária; a próxima consulta tentará novamente.
                 } finally {

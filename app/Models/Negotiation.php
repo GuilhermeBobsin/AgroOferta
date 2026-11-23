@@ -34,6 +34,16 @@ class Negotiation extends Model
         return in_array($user->id, [$this->buyer_id, $this->seller_id]);
     }
 
+    public function markMessagesRead(User $user, int $throughId): void
+    {
+        $user->messageNotifications()
+            ->whereNull('read_at')
+            ->whereHas('message', fn ($query) => $query
+                ->where('negotiation_id', $this->id)
+                ->where('id', '<=', $throughId))
+            ->update(['read_at' => now()]);
+    }
+
     /** A venda foi fechada com o comprador desta negociação. */
     public function isClosedWithBuyer(): bool
     {
