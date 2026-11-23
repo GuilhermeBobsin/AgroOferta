@@ -10,6 +10,7 @@ O AgroOferta é um marketplace de insumos agropecuários. Agricultores podem anu
 - Ordenação por data, preço e proximidade, quando o usuário tem coordenadas salvas.
 - Captura opcional da posição do produto no anúncio; a página mostra apenas distância aproximada.
 - Negociações privadas com mensagens e opção de continuar a conversa pelo WhatsApp.
+- Notificações de mensagens no sino do cabeçalho, com contador de não lidas, prévia e histórico para compradores e vendedores. O contador é consultado a cada 5 segundos enquanto a aba está visível; as prévias só são carregadas com o sino aberto. A consulta pausa em abas ocultas, retoma ao voltar à janela e espaça as tentativas em falhas de conexão. Abrir a conversa marca as mensagens exibidas como lidas. Os avisos ficam salvos para a próxima visita de quem estiver offline.
 - Gerenciamento do estado do anúncio: ativo, pausado ou vendido.
 - Avaliações disponíveis para as partes quando o vendedor registra a venda para um comprador que iniciou uma negociação no AgroOferta.
 
@@ -64,6 +65,12 @@ Para executar a suíte automatizada:
 
 ```powershell
 php artisan test
+```
+
+Para verificar o componente de notificações no JavaScript:
+
+```powershell
+node --test tests/JavaScript/notifications.test.js
 ```
 
 Os testes usam SQLite. A ordenação por distância depende de funções SQL que não estão disponíveis no SQLite e precisa ser validada em MySQL, MariaDB ou PostgreSQL.
