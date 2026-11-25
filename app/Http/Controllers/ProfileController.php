@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
+use App\Models\User;
+use App\Services\ReputationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -15,10 +17,26 @@ class ProfileController extends Controller
     /**
      * Display the user's profile form.
      */
-    public function edit(Request $request): View
+    public function edit(Request $request, ReputationService $reputation): View
     {
+        $user = $reputation->loadSummary($request->user());
+
         return view('profile.edit', [
-            'user' => $request->user(),
+            'user' => $user,
+            'reviews' => $reputation->paginateReviews($user),
+        ]);
+    }
+
+    /**
+     * Display a public user profile.
+     */
+    public function show(User $user, ReputationService $reputation): View
+    {
+        $user = $reputation->loadSummary($user);
+
+        return view('profile.show', [
+            'user' => $user,
+            'reviews' => $reputation->paginateReviews($user),
         ]);
     }
 

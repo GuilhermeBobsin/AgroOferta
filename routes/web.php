@@ -49,6 +49,7 @@ Route::middleware('auth')->group(function () {
 });
 
 Route::get('/anuncios/{listing}', [ListingController::class, 'show'])->name('listings.show');
+Route::get('/vendedores/{user}', [ProfileController::class, 'show'])->name('profiles.show');
 
 Route::get('/dashboard', DashboardController::class)->middleware('auth')->name('dashboard');
 

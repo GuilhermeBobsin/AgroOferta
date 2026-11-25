@@ -409,6 +409,7 @@ class MarketplaceTest extends TestCase
 
         $this->actingAs($buyer)->post(route('reviews.store', $negotiation), ['rating' => 5, 'comment' => 'Ótimo'])->assertRedirect();
         $this->assertDatabaseHas('reviews', ['reviewer_id' => $buyer->id, 'reviewed_id' => $seller->id, 'rating' => 5]);
+        $this->assertSame('5.00', $seller->fresh()->reputacao_nota);
 
         // seller também pode avaliar o comprador, mas só uma vez cada
         $this->actingAs($seller)->post(route('reviews.store', $negotiation), ['rating' => 4])->assertRedirect();
